@@ -33,8 +33,7 @@ A network file search tool for Windows. Supports hidden shares (C$, D$, ADMIN$),
 
 ## Screenshots
 
-<!-- Add screenshots here -->
-<!-- ![Screenshot](screenshot.png) -->
+![FileSearchPro - Interface](FileSearchPro/assets/main.png)
 
 ## Features
 

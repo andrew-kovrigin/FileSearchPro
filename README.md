@@ -33,8 +33,7 @@ keywords: поиск файлов в сети, network file search, C# WPF, по
 
 ## Скриншоты
 
-<!-- Добавьте скриншоты сюда -->
-<!-- ![Screenshot](screenshot.png) -->
+![FileSearchPro - Интерфейс](FileSearchPro/assets/main.png)
 
 ## Возможности
 
