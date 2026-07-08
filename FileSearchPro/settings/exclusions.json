@@ -1,0 +1,57 @@
+[
+  {
+    "Pattern": "System Volume Information",
+    "Type": "folder",
+    "IsEnabled": true
+  },
+  {
+    "Pattern": "$Recycle.Bin",
+    "Type": "folder",
+    "IsEnabled": true
+  },
+  {
+    "Pattern": "Windows",
+    "Type": "folder",
+    "IsEnabled": true
+  },
+  {
+    "Pattern": "Program Files",
+    "Type": "folder",
+    "IsEnabled": true
+  },
+  {
+    "Pattern": "Program Files (x86)",
+    "Type": "folder",
+    "IsEnabled": true
+  },
+  {
+    "Pattern": "*.tmp",
+    "Type": "file",
+    "IsEnabled": true
+  },
+  {
+    "Pattern": "Thumbs.db",
+    "Type": "file",
+    "IsEnabled": true
+  },
+  {
+    "Pattern": "LICENSE",
+    "Type": "file",
+    "IsEnabled": true
+  },
+  {
+    "Pattern": "LICENSE.*",
+    "Type": "file",
+    "IsEnabled": true
+  },
+  {
+    "Pattern": "COPYING",
+    "Type": "file",
+    "IsEnabled": true
+  },
+  {
+    "Pattern": "COPYING.*",
+    "Type": "file",
+    "IsEnabled": true
+  }
+]
