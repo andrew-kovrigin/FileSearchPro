@@ -1,9 +1,13 @@
+using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.IO;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Controls.Primitives;
 using System.Windows.Documents;
+using System.Windows.Threading;
 using FileSearchPro.Models;
 using FileSearchPro.Services;
 
@@ -18,175 +22,105 @@ public partial class MainWindow : Window
     private FileSearchService? _searchService;
     private CancellationTokenSource? _cts;
     private List<ExclusionRule> _exclusions = new();
-
-    private bool _isLoading;
+    private SearchConfig _config = new();
+    private string _password = string.Empty;
+    private readonly ObservableCollection<ScanLogEntry> _logEntries = new();
+    private readonly DispatcherTimer _threadTimer;
+    private readonly ConcurrentBag<Task> _runningTasks = new();
+    private volatile bool _isClosing;
 
     public MainWindow()
     {
         InitializeComponent();
-        _isLoading = true;
-        LoadSettings();
-        LoadExclusions();
-        WorkersSlider.ValueChanged += WorkersSlider_ValueChanged;
-        AttachAutoSaveHandlers();
-        _isLoading = false;
-    }
-
-    private void WorkersSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        if (WorkersCountText != null)
-            WorkersCountText.Text = ((int)WorkersSlider.Value).ToString();
-        AutoSave();
-    }
-
-    private void AttachAutoSaveHandlers()
-    {
-        IpRangeBox.TextChanged += (_, _) => AutoSave();
-        FilePatternBox.TextChanged += (_, _) => AutoSave();
-        MinSizeBox.TextChanged += (_, _) => AutoSave();
-        MaxSizeBox.TextChanged += (_, _) => AutoSave();
-        ContentSearchBox.TextChanged += (_, _) => AutoSave();
-        ContentExtensionsBox.TextChanged += (_, _) => AutoSave();
-        ContentExcludeExtensionsBox.TextChanged += (_, _) => AutoSave();
-        ChkShareC.Checked += (_, _) => AutoSave();
-        ChkShareC.Unchecked += (_, _) => AutoSave();
-        ChkShareD.Checked += (_, _) => AutoSave();
-        ChkShareD.Unchecked += (_, _) => AutoSave();
-        ChkUsers.Checked += (_, _) => AutoSave();
-        ChkUsers.Unchecked += (_, _) => AutoSave();
-        ChkAll.Checked += (_, _) => AutoSave();
-        ChkAll.Unchecked += (_, _) => AutoSave();
-        ChkSearchContent.Checked += (_, _) => AutoSave();
-        ChkSearchContent.Unchecked += (_, _) => AutoSave();
-        ChkIncludeNoExt.Checked += (_, _) => AutoSave();
-        ChkIncludeNoExt.Unchecked += (_, _) => AutoSave();
-        RbCurrentUser.Checked += (_, _) => AutoSave();
-        RbCustom.Checked += (_, _) => AutoSave();
-        DomainBox.TextChanged += (_, _) => AutoSave();
-        UsernameBox.TextChanged += (_, _) => AutoSave();
-        DateFromPicker.SelectedDateChanged += (_, _) => AutoSave();
-        DateToPicker.SelectedDateChanged += (_, _) => AutoSave();
-    }
-
-    private void AutoSave()
-    {
-        if (_isLoading) return;
-        SaveSettings();
-    }
-
-    private void LoadSettings()
-    {
-        var config = _settingsService.LoadConfig();
-        IpRangeBox.Text = config.LastIpRange;
-        FilePatternBox.Text = config.FilePattern;
-        ChkShareC.IsChecked = config.SelectedShares.Contains("C$");
-        ChkShareD.IsChecked = config.SelectedShares.Contains("D$");
-        ChkUsers?.SetValue(ToggleButton.IsCheckedProperty, config.SelectedShares.Contains("Users"));
-
-        if (config.MinSize.HasValue)
-            MinSizeBox.Text = (config.MinSize.Value / 1024).ToString();
-        if (config.MaxSize.HasValue)
-            MaxSizeBox.Text = (config.MaxSize.Value / 1024).ToString();
-        if (config.DateFrom.HasValue)
-            DateFromPicker.SelectedDate = config.DateFrom;
-        if (config.DateTo.HasValue)
-            DateToPicker.SelectedDate = config.DateTo;
-
-        RbCurrentUser.IsChecked = config.UseCurrentUser;
-        RbCustom.IsChecked = !config.UseCurrentUser;
-        DomainBox.Text = config.Domain;
-        UsernameBox.Text = config.Username;
-
-        WorkersSlider.Value = config.MaxWorkers;
-        WorkersCountText.Text = config.MaxWorkers.ToString();
-        ChkSearchContent.IsChecked = config.SearchContent;
-        ContentSearchBox.Text = config.ContentSearchText;
-        ContentExtensionsBox.Text = config.ContentExtensions;
-        ContentExcludeExtensionsBox.Text = config.ExcludeExtensions;
-        ChkIncludeNoExt.IsChecked = config.IncludeNoExt;
-    }
-
-    private void LoadExclusions()
-    {
+        _config = _settingsService.LoadConfig();
         _exclusions = _exclusionService.LoadExclusions();
-        RefreshExclusionsList();
+        IpRangeBox.Text = _config.LastIpRange;
+        LogListView.ItemsSource = _logEntries;
+
+        _threadTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _threadTimer.Tick += ThreadTimer_Tick;
+
+        if (!string.IsNullOrEmpty(_config.Language))
+            LanguageManager.SetLanguage(_config.Language);
+
+        LanguageManager.LanguageChanged += OnLanguageChanged;
     }
 
-    private void RefreshExclusionsList()
+    private void ThreadTimer_Tick(object? sender, EventArgs e)
     {
-        ExclusionsList.Items.Clear();
-        foreach (var ex in _exclusions.Where(e => e.IsEnabled))
+        var proc = Process.GetCurrentProcess();
+        var threads = proc.Threads.Count;
+        var memMB = proc.WorkingSet64 / 1024 / 1024;
+        ThreadCountText.Text = $"Потоков: {threads} | Память: {memMB}MB";
+    }
+
+    private void OnLanguageChanged()
+    {
+        LogCountText.Text = string.Format(LanguageManager.GetString("EntriesCount"), _logEntries.Count);
+    }
+
+    private void OpenSettings_Click(object sender, RoutedEventArgs e)
+    {
+        _config.LastIpRange = IpRangeBox.Text;
+        var dialog = new SettingsWindow(_config, _exclusions);
+        dialog.Owner = this;
+        if (dialog.ShowDialog() == true)
         {
-            ExclusionsList.Items.Add($"[{ex.Type}] {ex.Pattern}");
+            _config = dialog.Config;
+            _exclusions = dialog.Exclusions;
+            _password = dialog.Password;
+            _settingsService.SaveConfig(_config);
+            _exclusionService.SaveExclusions(_exclusions);
+            IpRangeBox.Text = _config.LastIpRange;
         }
     }
 
-    private void SaveSettings()
+    private void ClearLog_Click(object sender, RoutedEventArgs e)
     {
-        var selectedShares = new List<string>();
-        if (ChkShareC.IsChecked == true) selectedShares.Add("C$");
-        if (ChkShareD.IsChecked == true) selectedShares.Add("D$");
-        if (ChkUsers?.IsChecked == true) selectedShares.Add("Users");
+        _logEntries.Clear();
+        LogCountText.Text = string.Format(LanguageManager.GetString("EntriesCount"), 0);
+    }
 
-        long? minSize = null, maxSize = null;
-        if (long.TryParse(MinSizeBox.Text, out long minKb)) minSize = minKb * 1024;
-        if (long.TryParse(MaxSizeBox.Text, out long maxKb)) maxSize = maxKb * 1024;
+    private void CopyLog_Click(object sender, RoutedEventArgs e)
+    {
+        var text = string.Join(Environment.NewLine, _logEntries.Select(entry =>
+            $"[{entry.Timestamp:HH:mm:ss}] [{entry.Status}] [{entry.IpAddress}] {entry.Message}"));
+        Clipboard.SetText(text);
+    }
 
-        var config = new SearchConfig
+    private void ExportLog_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new Microsoft.Win32.SaveFileDialog
         {
-            LastIpRange = IpRangeBox.Text,
-            SelectedShares = selectedShares,
-            FilePattern = FilePatternBox.Text,
-            MinSize = minSize,
-            MaxSize = maxSize,
-            DateFrom = DateFromPicker.SelectedDate,
-            DateTo = DateToPicker.SelectedDate,
-            UseCurrentUser = RbCurrentUser.IsChecked == true,
-            Username = UsernameBox.Text,
-            Domain = DomainBox.Text,
-            MaxWorkers = (int)WorkersSlider.Value,
-            SearchContent = ChkSearchContent.IsChecked == true,
-            ContentSearchText = ContentSearchBox.Text,
-            ContentExtensions = ContentExtensionsBox.Text,
-            ExcludeExtensions = ContentExcludeExtensionsBox.Text,
-            IncludeNoExt = ChkIncludeNoExt.IsChecked == true
+            Filter = "Log files (*.log)|*.log|All files (*.*)|*.*",
+            DefaultExt = ".log",
+            FileName = $"FileSearchPro_{DateTime.Now:yyyyMMdd_HHmmss}.log"
         };
-        _settingsService.SaveConfig(config);
+
+        if (dialog.ShowDialog() == true)
+        {
+            var text = string.Join(Environment.NewLine, _logEntries.Select(entry =>
+                $"[{entry.Timestamp:yyyy-MM-dd HH:mm:ss}] [{entry.Status}] [{entry.IpAddress}] {entry.Message}"));
+            File.WriteAllText(dialog.FileName, text);
+        }
     }
 
-    private void RbCurrentUser_Checked(object sender, RoutedEventArgs e)
+    private void OnScanLog(ScanLogEntry entry)
     {
-        if (CustomCredsPanel != null)
-            CustomCredsPanel.IsEnabled = false;
+        Dispatcher.BeginInvoke(() =>
+        {
+            _logEntries.Add(entry);
+            LogCountText.Text = string.Format(LanguageManager.GetString("EntriesCount"), _logEntries.Count);
+            LogListView.ScrollIntoView(LogListView.Items[^1]);
+        });
     }
 
-    private void RbCustom_Checked(object sender, RoutedEventArgs e)
+    private void OnScanProgress(string ip)
     {
-        if (CustomCredsPanel != null)
-            CustomCredsPanel.IsEnabled = true;
-    }
-
-    private void AddExclusion_Click(object sender, RoutedEventArgs e)
-    {
-        var pattern = NewExclusionBox.Text.Trim();
-        if (string.IsNullOrEmpty(pattern)) return;
-
-        var type = (ExclusionTypeCombo.SelectedItem as ComboBoxItem)?.Content?.ToString() == "Папка" ? "folder" : "file";
-        var rule = new ExclusionRule { Pattern = pattern, Type = type, IsEnabled = true };
-        _exclusions.Add(rule);
-        _exclusionService.SaveExclusions(_exclusions);
-        RefreshExclusionsList();
-        NewExclusionBox.Text = string.Empty;
-    }
-
-    private void RemoveExclusion_Click(object sender, RoutedEventArgs e)
-    {
-        if (ExclusionsList.SelectedIndex < 0) return;
-        var selected = ExclusionsList.SelectedItem.ToString()!;
-        var pattern = selected.Split(' ', 2)[1];
-        _exclusions.RemoveAll(ex => ex.Pattern == pattern);
-        _exclusionService.SaveExclusions(_exclusions);
-        RefreshExclusionsList();
+        Dispatcher.BeginInvoke(() =>
+        {
+            CurrentFileText.Text = string.Format(LanguageManager.GetString("ScanningIP"), ip);
+        });
     }
 
     private async void ResultsGrid_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -200,12 +134,12 @@ public partial class MainWindow : Window
         if (!hasNoExt && !textExts.Contains(ext))
         {
             PreviewFileName.Text = selected.FileName;
-            PreviewTextBlock.Text = $"Предпросмотр недоступен для {ext}";
+            PreviewTextBlock.Text = string.Format(LanguageManager.GetString("PreviewUnavailable"), ext);
             return;
         }
 
         PreviewFileName.Text = selected.FileName;
-        PreviewTextBlock.Text = "Загрузка...";
+        PreviewTextBlock.Text = LanguageManager.GetString("Loading");
 
         try
         {
@@ -219,16 +153,16 @@ public partial class MainWindow : Window
                 int read = reader.Read(buffer, 0, buffer.Length);
                 var text = new string(buffer, 0, read);
                 if (fi.Length > maxBytes)
-                    text += "\n\n... (обрезано, показано 50КБ из " + (fi.Length / 1024) + "КБ)";
+                    text += string.Format(LanguageManager.GetString("PreviewTruncated"), fi.Length / 1024);
                 return text;
             });
 
-            var searchText = (ChkSearchContent.IsChecked == true) ? ContentSearchBox.Text : null;
+            var searchText = (_config.SearchContent) ? _config.ContentSearchText : null;
             ShowPreview(content, searchText);
         }
         catch
         {
-            PreviewTextBlock.Text = "Ошибка чтения файла";
+            PreviewTextBlock.Text = LanguageManager.GetString("PreviewReadError");
         }
     }
 
@@ -296,65 +230,79 @@ public partial class MainWindow : Window
     {
         if (string.IsNullOrWhiteSpace(IpRangeBox.Text))
         {
-            MessageBox.Show("Введите IP-адреса или диапазон.", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(LanguageManager.GetString("MsgEnterIP"), LanguageManager.GetString("MsgError"), MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        SaveSettings();
+        _config.LastIpRange = IpRangeBox.Text;
+        _settingsService.SaveConfig(_config);
+
         BtnStart.IsEnabled = false;
         BtnStop.IsEnabled = true;
         SearchProgress.Visibility = Visibility.Visible;
-        CurrentFileText.Text = "Подключение к хостам...";
-        StatusText.Text = "Поиск...";
+        CurrentFileText.Text = LanguageManager.GetString("ConnectingHosts");
+        StatusText.Text = LanguageManager.GetString("Searching");
+        _threadTimer.Start();
 
         var selectedShares = new List<string>();
-        if (ChkShareC.IsChecked == true) selectedShares.Add("C$");
-        if (ChkShareD.IsChecked == true) selectedShares.Add("D$");
-        if (ChkUsers?.IsChecked == true) selectedShares.Add("Users");
-        if (ChkAll.IsChecked == true)
-        {
-            selectedShares = new List<string> { "C$", "D$", "Users", "ADMIN$", "IPC$" };
-        }
+        if (_config.SelectedShares.Contains("C$")) selectedShares.Add("C$");
+        if (_config.SelectedShares.Contains("D$")) selectedShares.Add("D$");
+        if (_config.SelectedShares.Contains("Users")) selectedShares.Add("Users");
 
         var credentials = _authService.GetCredentials(
-            RbCurrentUser.IsChecked == true,
-            DomainBox.Text,
-            UsernameBox.Text,
-            PasswordBox.Password);
+            _config.UseCurrentUser,
+            _config.Domain,
+            _config.Username,
+            _password);
 
         _cts = new CancellationTokenSource();
 
         try
         {
             var ips = NetworkScanner.ParseIpRange(IpRangeBox.Text);
+            _logEntries.Clear();
             ScannedCountText.Text = "0";
             FoundCountText.Text = "0";
-            CurrentFileText.Text = $"Сканирование {ips.Count} адресов...";
+            CurrentFileText.Text = string.Format(LanguageManager.GetString("ScanningAddresses"), ips.Count);
 
-            var maxWorkers = (int)WorkersSlider.Value;
-            var targets = await _networkScanner.ScanNetworkAsync(ips, maxWorkers, _cts.Token);
+            OnScanLog(new ScanLogEntry
+            {
+                Status = ScanLogEntryStatus.Info,
+                Message = string.Format(LanguageManager.GetString("ScanStarted"), ips.Count)
+            });
+
+            _networkScanner.SetTimeouts(_config.PingTimeoutMs, _config.ShareTimeoutMs);
+            var targets = await _networkScanner.ScanNetworkAsync(ips, _cts.Token, OnScanLog, OnScanProgress);
             var onlineTargets = targets.Where(t => t.IsOnline).ToList();
 
-            CurrentFileText.Text = $"Найдено {onlineTargets.Count} хостов. Поиск файлов...";
+            OnScanLog(new ScanLogEntry
+            {
+                Status = ScanLogEntryStatus.Info,
+                Message = string.Format(LanguageManager.GetString("ScanComplete"), onlineTargets.Count, targets.Count - onlineTargets.Count)
+            });
+
+            CurrentFileText.Text = string.Format(LanguageManager.GetString("FoundHostsSearching"), onlineTargets.Count);
 
             var results = new List<SearchResult>();
             var lockObj = new object();
-            var filePattern = FilePatternBox.Text;
-            var searchContent = ChkSearchContent.IsChecked == true;
-            var contentText = ContentSearchBox.Text;
-            var contentExtensions = ContentExtensionsBox.Text
+            var filePattern = _config.FilePattern;
+            var searchContent = _config.SearchContent;
+            var contentText = _config.ContentSearchText;
+            var contentExtensions = _config.ContentExtensions
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Select(e => e.StartsWith('.') ? e.ToLowerInvariant() : "." + e.ToLowerInvariant())
                 .ToList();
-            var excludeExtensions = ContentExcludeExtensionsBox.Text
+            var excludeExtensions = _config.ExcludeExtensions
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
                 .Select(e => e.StartsWith('.') ? e.ToLowerInvariant() : "." + e.ToLowerInvariant())
                 .ToList();
-            var includeNoExt = ChkIncludeNoExt.IsChecked == true;
+            var includeNoExt = _config.IncludeNoExt;
 
-            _searchService = new FileSearchService(_exclusions, credentials, _cts.Token);
+            _searchService = new FileSearchService(_exclusions, credentials, _cts.Token, _config.FileIOTimeoutMs);
+            var lastResultSnapshot = 0;
+            var resultTimer = new Stopwatch();
 
-            await Task.Run(() =>
+            var searchTask = Task.Run(() =>
             {
                 _searchService.Search(
                     onlineTargets,
@@ -370,12 +318,18 @@ public partial class MainWindow : Window
                         lock (lockObj)
                         {
                             results.Add(result);
-                            var snapshot = results.ToArray();
-                            Dispatcher.BeginInvoke(() =>
+                            var count = results.Count;
+                            if (count - lastResultSnapshot >= 20 || !resultTimer.IsRunning || resultTimer.ElapsedMilliseconds >= 1000)
                             {
-                                ResultsGrid.ItemsSource = snapshot;
-                                FoundCountText.Text = snapshot.Length.ToString();
-                            });
+                                lastResultSnapshot = count;
+                                resultTimer.Restart();
+                                var snapshot = results.ToArray();
+                                Dispatcher.BeginInvoke(() =>
+                                {
+                                    ResultsGrid.ItemsSource = snapshot;
+                                    FoundCountText.Text = snapshot.Length.ToString();
+                                });
+                            }
                         }
                     },
                     onCurrentFile: path =>
@@ -391,34 +345,47 @@ public partial class MainWindow : Window
                         {
                             ScannedCountText.Text = count.ToString();
                         });
-                    });
+                    },
+                    onLog: OnScanLog);
             }, _cts.Token);
+
+            _runningTasks.Add(searchTask);
+            try { await searchTask; }
+            finally { /* task removed from bag on process exit */ }
 
             var finalResults = results.ToArray();
             Dispatcher.Invoke(() =>
             {
                 ResultsGrid.ItemsSource = finalResults;
                 ScannedCountText.Text = finalResults.Length.ToString();
-                StatusText.Text = $"Завершено";
-                CurrentFileText.Text = $"Готов. Найдено файлов: {finalResults.Length}";
+                StatusText.Text = LanguageManager.GetString("Finished");
+                CurrentFileText.Text = string.Format(LanguageManager.GetString("ReadyFoundFiles"), finalResults.Length);
                 SearchProgress.Visibility = Visibility.Collapsed;
+            });
+
+            OnScanLog(new ScanLogEntry
+            {
+                Status = ScanLogEntryStatus.Complete,
+                Message = string.Format(LanguageManager.GetString("SearchCompleteFound"), finalResults.Length)
             });
         }
         catch (OperationCanceledException)
         {
-            CurrentFileText.Text = "Поиск отменён";
+            CurrentFileText.Text = LanguageManager.GetString("SearchCancelled");
             SearchProgress.Visibility = Visibility.Collapsed;
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"Ошибка: {ex.Message}", "Ошибка", MessageBoxButton.OK, MessageBoxImage.Error);
-            CurrentFileText.Text = "Ошибка поиска";
+            MessageBox.Show(string.Format(LanguageManager.GetString("MsgErrorPrefix"), ex.Message), LanguageManager.GetString("MsgErrorTitle"), MessageBoxButton.OK, MessageBoxImage.Error);
+            CurrentFileText.Text = LanguageManager.GetString("SearchError");
             SearchProgress.Visibility = Visibility.Collapsed;
         }
         finally
         {
             BtnStart.IsEnabled = true;
             BtnStop.IsEnabled = false;
+            _threadTimer.Stop();
+            ThreadCountText.Text = "";
         }
     }
 
@@ -426,12 +393,38 @@ public partial class MainWindow : Window
     {
         _cts?.Cancel();
         BtnStop.IsEnabled = false;
+        BtnStart.IsEnabled = true;
+        SearchProgress.Visibility = Visibility.Collapsed;
+        StatusText.Text = LanguageManager.GetString("SearchCancelled");
+        _threadTimer.Stop();
+        ThreadCountText.Text = "";
     }
 
     protected override void OnClosed(EventArgs e)
     {
-        SaveSettings();
-        _exclusionService.SaveExclusions(_exclusions);
+        if (_isClosing) return;
+        _isClosing = true;
+
+        _cts?.Cancel();
+        _threadTimer.Stop();
+        LanguageManager.LanguageChanged -= OnLanguageChanged;
+
+        try
+        {
+            _config.LastIpRange = IpRangeBox.Text;
+            _settingsService.SaveConfig(_config);
+            _exclusionService.SaveExclusions(_exclusions);
+        }
+        catch { }
+
         base.OnClosed(e);
+
+        var sw = Stopwatch.StartNew();
+        while (_runningTasks.Count > 0 && sw.ElapsedMilliseconds < 3000)
+        {
+            Thread.Sleep(50);
+        }
+
+        Process.GetCurrentProcess().Kill();
     }
 }

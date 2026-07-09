@@ -1,7 +1,7 @@
 ---
 title: FileSearchPro - Поиск файлов в локальной сети Windows | C# WPF
-description: Бесплатный инструмент для поиска файлов по IP в локальной сети. Поиск по имени и содержимому, скрытые шары C$, подсветка совпадений.
-keywords: поиск файлов в сети, network file search, C# WPF, поиск по IP, поиск по содержимому, скрытые шары, Windows поиск, file search tool, network scan
+description: Бесплатный инструмент для поиска файлов по IP в локальной сети. Поиск по имени и содержимому, скрытые шары C$, журнал сканирования, локализация RU/EN.
+keywords: поиск файлов в сети, network file search, C# WPF, поиск по IP, поиск по содержимому, скрытые шары, Windows поиск, file search tool, network scan, журнал сканирования
 ---
 
 # FileSearchPro — Поиск файлов в локальной сети Windows
@@ -29,11 +29,7 @@ keywords: поиск файлов в сети, network file search, C# WPF, по
 
 ---
 
-Инструмент для поиска файлов в локальной сети Windows. Поддержка скрытых шар (C$, D$, ADMIN$), поиск по имени и содержимому, настраиваемые исключения.
-
-## Скриншоты
-
-![FileSearchPro - Интерфейс](FileSearchPro/assets/main.png)
+Инструмент для поиска файлов в локальной сети Windows. Поддержка скрытых шар (C$, D$, ADMIN$), поиск по имени и содержимому, журнал сканирования в реальном времени, локализация RU/EN.
 
 ## Возможности
 
@@ -43,8 +39,11 @@ keywords: поиск файлов в сети, network file search, C# WPF, по
 - **Поиск по содержимому** — несколько слов через запятую, подсветка совпадений
 - **Исключения** — папки, файлы, расширения (настраивается)
 - **Предпросмотр** — текстовых файлов с подсветкой найденных слов
-- **Настройки** — автосохранение всех параметров
-- **Производительность** — до 512 потоков, кэширование сети (5 мин)
+- **Журнал сканирования** — реал-тайм лог каждого хоста (IP, статус, шары)
+- **Экспорт журнала** — копирование в буфер обмена + сохранение в .log файл
+- **Настройки** — модальное окно с таймаутами, шарами, фильтрами
+- **Локализация** — переключение RU/EN в настройках
+- **Мониторинг** — количество потоков и память в статус-баре
 
 ## Требования
 
@@ -72,10 +71,10 @@ dotnet run --project FileSearchPro
 
 ## Использование
 
-1. Введите IP-адреса или диапазон в поле «Сетевые адреса»
-2. Выберите шары для поиска (C$, D$, Users)
-3. Настройте шаблон имени файла или включите поиск по содержимому
-4. Нажмите «Начать поиск»
+1. Введите IP-адреса или диапазон в поле «IP-адреса»
+2. Нажмите «Настройки» для конфигурации шар, таймаутов, фильтров
+3. Нажмите «Начать поиск»
+4. Наблюдайте за прогрессом в журнале сканирования
 
 ### Примеры IP-диапазонов
 
@@ -85,39 +84,54 @@ dotnet run --project FileSearchPro
 | `10.0.0.1,10.0.0.2` | Конкретные адреса |
 | `172.16.0.1-50` | Подсеть |
 
-### Поиск по содержимому
+### Журнал сканирования
 
-1. Включите галочку «Искать текст в файлах»
-2. Введите слова через запятую: `password, пароль, ключ`
-3. Настройте расширения для поиска и исключения
-4. Совпадения подсвечиваются жёлтым в предпросмотре
+Во время поиска в нижней панели отображается журнал:
+- Каждый хост с его статусом (online/offline)
+- Найденные шары
+- Кнопки «Копировать» и «Экспорт .log» для сохранения
+
+### Таймауты
+
+В настройках можно настроить:
+- **Ping** — время ожидания ответа хоста (по умолчанию 300мс)
+- **Шары** — время проверки доступности шары (по умолчанию 3000мс)
+- **Файлы** — время перечисления файлов (по умолчанию 5000мс)
 
 ## Структура проекта
 
 ```
 FileSearchPro/
-├── [FileSearchPro.sln](FileSearchPro.sln)
-├── [README.md](README.md)
-├── [README_EN.md](README_EN.md)
-├── [LICENSE](LICENSE)
-├── [.gitignore](.gitignore)
-└── [FileSearchPro/](FileSearchPro/)
-    ├── [App.xaml](FileSearchPro/App.xaml)
-    ├── [MainWindow.xaml](FileSearchPro/MainWindow.xaml) — Интерфейс
-    ├── [MainWindow.xaml.cs](FileSearchPro/MainWindow.xaml.cs) — Логика UI
-    ├── [Models/](FileSearchPro/Models/)
-    │   ├── [SearchConfig.cs](FileSearchPro/Models/SearchConfig.cs)
-    │   ├── [ExclusionRule.cs](FileSearchPro/Models/ExclusionRule.cs)
-    │   ├── [SearchResult.cs](FileSearchPro/Models/SearchResult.cs)
-    │   └── [NetworkTarget.cs](FileSearchPro/Models/NetworkTarget.cs)
-    ├── [Services/](FileSearchPro/Services/)
-    │   ├── [NetworkScanner.cs](FileSearchPro/Services/NetworkScanner.cs) — Сканирование сети
-    │   ├── [FileSearchService.cs](FileSearchPro/Services/FileSearchService.cs) — Поиск файлов
-    │   ├── [ExclusionService.cs](FileSearchPro/Services/ExclusionService.cs) — Исключения
-    │   ├── [AuthService.cs](FileSearchPro/Services/AuthService.cs) — Авторизация
-    │   └── [SettingsService.cs](FileSearchPro/Services/SettingsService.cs) — Настройки
-    └── [settings/](FileSearchPro/settings/)
-        └── [exclusions.json](FileSearchPro/settings/exclusions.json)
+├── FileSearchPro.sln
+├── README.md
+├── README_EN.md
+├── LICENSE
+├── .gitignore
+└── FileSearchPro/
+    ├── App.xaml
+    ├── MainWindow.xaml — Интерфейс
+    ├── MainWindow.xaml.cs — Логика UI
+    ├── Models/
+    │   ├── SearchConfig.cs
+    │   ├── ExclusionRule.cs
+    │   ├── SearchResult.cs
+    │   ├── ScanLogEntry.cs
+    │   └── NetworkTarget.cs
+    ├── Services/
+    │   ├── NetworkScanner.cs — Сканирование сети
+    │   ├── FileSearchService.cs — Поиск файлов
+    │   ├── ExclusionService.cs — Исключения
+    │   ├── AuthService.cs — Авторизация
+    │   ├── SettingsService.cs — Настройки
+    │   └── LanguageManager.cs — Локализация
+    ├── Converters/
+    │   ├── BoolToVisibilityConverter.cs
+    │   └── ScanStatusToBrushConverter.cs
+    ├── Resources/
+    │   ├── Strings.ru.xaml
+    │   └── Strings.en.xaml
+    └── settings/
+        └── exclusions.json
 ```
 
 ## Лицензия
@@ -126,5 +140,4 @@ FileSearchPro/
 
 ---
 
-**Tags:** `network file search` `C# WPF application` `search files by IP` `Windows network scanner` `find files in network` `hidden shares search` `C$ D$ access` `file content search` `grep network` `search text in files`
-
+**Tags:** `network file search` `C# WPF application` `search files by IP` `Windows network scanner` `find files in network` `hidden shares search` `C$ D$ access` `file content search` `grep network` `search text in files` `scan journal` `localization`

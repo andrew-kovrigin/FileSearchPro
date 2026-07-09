@@ -1,7 +1,7 @@
 ---
 title: FileSearchPro - Network File Search Tool for Windows | C# WPF
-description: Free tool to search files across network by IP. Search by name and content, hidden shares C$, match highlighting, up to 512 threads.
-keywords: network file search, C# WPF, search by IP, file content search, hidden shares, Windows search, grep network, find files LAN, SMB search tool
+description: Free tool to search files across network by IP. Search by name and content, hidden shares C$, scan journal, localization RU/EN.
+keywords: network file search, C# WPF, search by IP, file content search, hidden shares, Windows search, grep network, find files LAN, SMB search tool, scan journal
 ---
 
 # FileSearchPro — Network File Search Tool for Windows
@@ -29,11 +29,7 @@ keywords: network file search, C# WPF, search by IP, file content search, hidden
 
 ---
 
-A network file search tool for Windows. Supports hidden shares (C$, D$, ADMIN$), search by name and content, configurable exclusions.
-
-## Screenshots
-
-![FileSearchPro - Interface](FileSearchPro/assets/main.png)
+A network file search tool for Windows. Supports hidden shares (C$, D$, ADMIN$), search by name and content, real-time scan journal, localization RU/EN.
 
 ## Features
 
@@ -43,8 +39,11 @@ A network file search tool for Windows. Supports hidden shares (C$, D$, ADMIN$),
 - **Content search** — multiple words via comma, match highlighting
 - **Exclusions** — folders, files, extensions (configurable)
 - **Preview** — text files with highlighted matches
-- **Settings** — auto-save all parameters
-- **Performance** — up to 512 threads, network caching (5 min)
+- **Scan journal** — real-time log of each host (IP, status, shares)
+- **Journal export** — copy to clipboard + save to .log file
+- **Settings** — modal window with timeouts, shares, filters
+- **Localization** — switch RU/EN in settings
+- **Monitoring** — thread count and memory in status bar
 
 ## Requirements
 
@@ -72,10 +71,10 @@ Or run `FileSearchPro.exe` from `bin\Debug\net8.0-windows\`
 
 ## Usage
 
-1. Enter IP addresses or range in the "Network addresses" field
-2. Select shares to search (C$, D$, Users)
-3. Configure file name pattern or enable content search
-4. Click "Start search"
+1. Enter IP addresses or range in the "IP addresses" field
+2. Click "Settings" to configure shares, timeouts, filters
+3. Click "Start search"
+4. Watch progress in the scan journal
 
 ### IP range examples
 
@@ -85,39 +84,54 @@ Or run `FileSearchPro.exe` from `bin\Debug\net8.0-windows\`
 | `10.0.0.1,10.0.0.2` | Specific addresses |
 | `172.16.0.1-50` | Subnet |
 
-### Content search
+### Scan Journal
 
-1. Enable "Search text in files" checkbox
-2. Enter words separated by commas: `password, secret, key`
-3. Configure search extensions and exclusions
-4. Matches are highlighted in yellow in the preview
+During search, the bottom panel shows a real-time journal:
+- Each host with its status (online/offline)
+- Discovered shares
+- "Copy" and "Export .log" buttons for saving
+
+### Timeouts
+
+Configure in settings:
+- **Ping** — host response wait time (default 300ms)
+- **Shares** — share availability check time (default 3000ms)
+- **Files** — file listing time (default 5000ms)
 
 ## Project Structure
 
 ```
 FileSearchPro/
-├── [FileSearchPro.sln](FileSearchPro.sln)
-├── [README.md](README.md)
-├── [README_EN.md](README_EN.md)
-├── [LICENSE](LICENSE)
-├── [.gitignore](.gitignore)
-└── [FileSearchPro/](FileSearchPro/)
-    ├── [App.xaml](FileSearchPro/App.xaml)
-    ├── [MainWindow.xaml](FileSearchPro/MainWindow.xaml) — UI Interface
-    ├── [MainWindow.xaml.cs](FileSearchPro/MainWindow.xaml.cs) — UI Logic
-    ├── [Models/](FileSearchPro/Models/)
-    │   ├── [SearchConfig.cs](FileSearchPro/Models/SearchConfig.cs)
-    │   ├── [ExclusionRule.cs](FileSearchPro/Models/ExclusionRule.cs)
-    │   ├── [SearchResult.cs](FileSearchPro/Models/SearchResult.cs)
-    │   └── [NetworkTarget.cs](FileSearchPro/Models/NetworkTarget.cs)
-    ├── [Services/](FileSearchPro/Services/)
-    │   ├── [NetworkScanner.cs](FileSearchPro/Services/NetworkScanner.cs) — Network Scanning
-    │   ├── [FileSearchService.cs](FileSearchPro/Services/FileSearchService.cs) — File Search
-    │   ├── [ExclusionService.cs](FileSearchPro/Services/ExclusionService.cs) — Exclusions
-    │   ├── [AuthService.cs](FileSearchPro/Services/AuthService.cs) — Authentication
-    │   └── [SettingsService.cs](FileSearchPro/Services/SettingsService.cs) — Settings
-    └── [settings/](FileSearchPro/settings/)
-        └── [exclusions.json](FileSearchPro/settings/exclusions.json)
+├── FileSearchPro.sln
+├── README.md
+├── README_EN.md
+├── LICENSE
+├── .gitignore
+└── FileSearchPro/
+    ├── App.xaml
+    ├── MainWindow.xaml — UI Interface
+    ├── MainWindow.xaml.cs — UI Logic
+    ├── Models/
+    │   ├── SearchConfig.cs
+    │   ├── ExclusionRule.cs
+    │   ├── SearchResult.cs
+    │   ├── ScanLogEntry.cs
+    │   └── NetworkTarget.cs
+    ├── Services/
+    │   ├── NetworkScanner.cs — Network Scanning
+    │   ├── FileSearchService.cs — File Search
+    │   ├── ExclusionService.cs — Exclusions
+    │   ├── AuthService.cs — Authentication
+    │   ├── SettingsService.cs — Settings
+    │   └── LanguageManager.cs — Localization
+    ├── Converters/
+    │   ├── BoolToVisibilityConverter.cs
+    │   └── ScanStatusToBrushConverter.cs
+    ├── Resources/
+    │   ├── Strings.ru.xaml
+    │   └── Strings.en.xaml
+    └── settings/
+        └── exclusions.json
 ```
 
 ## License
@@ -126,4 +140,4 @@ FileSearchPro/
 
 ---
 
-**Tags:** `network file search` `C# WPF application` `search files by IP` `Windows network scanner` `find files in network` `hidden shares search` `C$ D$ access` `file content search` `grep network` `search text in files`
+**Tags:** `network file search` `C# WPF application` `search files by IP` `Windows network scanner` `find files in network` `hidden shares search` `C$ D$ access` `file content search` `grep network` `search text in files` `scan journal` `localization`

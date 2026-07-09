@@ -1,0 +1,90 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:s="clr-namespace:System;assembly=mscorlib">
+
+    <!-- MainWindow -->
+    <s:String x:Key="AppTitle">FileSearchPro - Поиск файлов в сети</s:String>
+    <s:String x:Key="Scanned">Пройдено:</s:String>
+    <s:String x:Key="Found">Найдено:</s:String>
+    <s:String x:Key="Ready">Готов</s:String>
+    <s:String x:Key="IPAddress">IP-адреса:</s:String>
+    <s:String x:Key="IPHint">192.168.1.1-254  или  10.0.0.1,10.0.0.2</s:String>
+    <s:String x:Key="StartSearch">Начать поиск</s:String>
+    <s:String x:Key="StopSearch">Остановить</s:String>
+    <s:String x:Key="Settings">Настройки</s:String>
+    <s:String x:Key="SearchResults">Результаты поиска</s:String>
+    <s:String x:Key="ColShare">Шара</s:String>
+    <s:String x:Key="ColFullPath">Полный путь</s:String>
+    <s:String x:Key="ColSize">Размер</s:String>
+    <s:String x:Key="ColModified">Изменён</s:String>
+    <s:String x:Key="Preview">Предпросмотр:</s:String>
+    <s:String x:Key="ThreadInfo">Потоков: {0} | Память: {1}MB</s:String>
+    <s:String x:Key="ScanLog">Журнал сканирования</s:String>
+    <s:String x:Key="EntriesCount">{0} записей</s:String>
+    <s:String x:Key="ClearLog">Очистить</s:String>
+    <s:String x:Key="CopyLog">Копировать</s:String>
+    <s:String x:Key="ExportLog">Экспорт .log</s:String>
+    <s:String x:Key="ColTime">Время</s:String>
+    <s:String x:Key="ColStatus">Статус</s:String>
+    <s:String x:Key="ColMessage">Сообщение</s:String>
+    <s:String x:Key="ReadyToSearch">Готов к поиску</s:String>
+    <s:String x:Key="Language">Язык</s:String>
+
+    <!-- SettingsWindow -->
+    <s:String x:Key="SettingsTitle">Настройки поиска</s:String>
+    <s:String x:Key="Shares">Шары</s:String>
+    <s:String x:Key="AllShares">Все</s:String>
+    <s:String x:Key="Timeouts">Таймауты (если сеть медленная — увеличьте)</s:String>
+    <s:String x:Key="PingTimeoutDesc">Время ожидания ping-ответа от хоста</s:String>
+    <s:String x:Key="ShareTimeoutDesc">Время проверки доступности сетевой шары</s:String>
+    <s:String x:Key="FileTimeoutDesc">Время перечисления файлов на шаре</s:String>
+    <s:String x:Key="TimeoutHint">Рекомендация: 300/3000/5000 для быстрых сетей, 500/5000/10000 для медленных</s:String>
+    <s:String x:Key="FileSearch">Поиск файла</s:String>
+    <s:String x:Key="NamePattern">Шаблон имени:</s:String>
+    <s:String x:Key="NamePatternHint">*.pdf  report_*.*  config.json</s:String>
+    <s:String x:Key="Filters">Фильтры</s:String>
+    <s:String x:Key="SizeKB">Размер (КБ):</s:String>
+    <s:String x:Key="From">от:</s:String>
+    <s:String x:Key="To">до:</s:String>
+    <s:String x:Key="ModifiedDate">Дата модификации:</s:String>
+    <s:String x:Key="ContentSearch">Поиск по содержимому</s:String>
+    <s:String x:Key="SearchTextInFiles">Искать текст в файлах</s:String>
+    <s:String x:Key="SearchTextHint">Текст для поиска (через запятую):</s:String>
+    <s:String x:Key="SearchTextExample">Искать: password, ключ, error</s:String>
+    <s:String x:Key="SearchInExtensions">Искать в расширениях:</s:String>
+    <s:String x:Key="ExcludeExtensions">Исключить расширения:</s:String>
+    <s:String x:Key="IncludeNoExt">Включить файлы без расширения</s:String>
+    <s:String x:Key="Auth">Авторизация</s:String>
+    <s:String x:Key="CurrentUser">Текущий пользователь</s:String>
+    <s:String x:Key="CustomCredentials">Указать учётные данные</s:String>
+    <s:String x:Key="Domain">Домен:</s:String>
+    <s:String x:Key="Username">Пользователь:</s:String>
+    <s:String x:Key="Password">Пароль:</s:String>
+    <s:String x:Key="Exclusions">Исключения</s:String>
+    <s:String x:Key="Folder">Папка</s:String>
+    <s:String x:Key="File">Файл</s:String>
+    <s:String x:Key="Save">Сохранить</s:String>
+    <s:String x:Key="Cancel">Отмена</s:String>
+
+    <!-- Messages -->
+    <s:String x:Key="MsgEnterIP">Введите IP-адреса или диапазон.</s:String>
+    <s:String x:Key="MsgError">Ошибка</s:String>
+    <s:String x:Key="PreviewUnavailable">Предпросмотр недоступен для {0}</s:String>
+    <s:String x:Key="Loading">Загрузка...</s:String>
+    <s:String x:Key="PreviewTruncated">\n\n... (обрезано, показано 50КБ из {0}КБ)</s:String>
+    <s:String x:Key="PreviewReadError">Ошибка чтения файла</s:String>
+    <s:String x:Key="ScanningIP">Сканирование: {0}</s:String>
+    <s:String x:Key="ConnectingHosts">Подключение к хостам...</s:String>
+    <s:String x:Key="Searching">Поиск...</s:String>
+    <s:String x:Key="ScanningAddresses">Сканирование {0} адресов...</s:String>
+    <s:String x:Key="ScanStarted">Начато сканирование {0} адресов</s:String>
+    <s:String x:Key="ScanComplete">Сканирование завершено. Онлайн: {0}, оффлайн: {1}</s:String>
+    <s:String x:Key="FoundHostsSearching">Найдено {0} хостов. Поиск файлов...</s:String>
+    <s:String x:Key="Finished">Завершено</s:String>
+    <s:String x:Key="ReadyFoundFiles">Готов. Найдено файлов: {0}</s:String>
+    <s:String x:Key="SearchCompleteFound">Поиск завершён. Найдено файлов: {0}</s:String>
+    <s:String x:Key="SearchCancelled">Поиск отменён</s:String>
+    <s:String x:Key="MsgErrorPrefix">Ошибка: {0}</s:String>
+    <s:String x:Key="SearchError">Ошибка поиска</s:String>
+    <s:String x:Key="MsgErrorTitle">Ошибка</s:String>
+</ResourceDictionary>

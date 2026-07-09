@@ -12,10 +12,13 @@ public class SearchConfig
     public bool UseCurrentUser { get; set; } = true;
     public string Username { get; set; } = string.Empty;
     public string Domain { get; set; } = string.Empty;
-    public int MaxWorkers { get; set; } = 128;
     public bool SearchContent { get; set; }
     public string ContentSearchText { get; set; } = string.Empty;
     public string ContentExtensions { get; set; } = ".txt,.log,.csv,.xml,.json,.cs,.py,.js,.md,.cfg,.ini";
     public string ExcludeExtensions { get; set; } = ".exe,.dll,.bin,.zip,.rar,.7z,.png,.jpg,.gif";
     public bool IncludeNoExt { get; set; } = true;
+    public string Language { get; set; } = "ru";
+    public int PingTimeoutMs { get; set; } = 300;
+    public int ShareTimeoutMs { get; set; } = 3000;
+    public int FileIOTimeoutMs { get; set; } = 5000;
 }

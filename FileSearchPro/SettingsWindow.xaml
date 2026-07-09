@@ -1,0 +1,164 @@
+<Window x:Class="FileSearchPro.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource SettingsTitle}"
+        Height="700" Width="450"
+        Background="#1E1E1E"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="CanResizeWithGrip">
+    <Grid Margin="12">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <ScrollViewer VerticalScrollBarVisibility="Auto" Grid.Row="0">
+            <StackPanel>
+                <!-- Language -->
+                <GroupBox Header="{DynamicResource Language}" Margin="0,0,0,8">
+                    <StackPanel Margin="4">
+                        <WrapPanel>
+                            <RadioButton x:Name="RbLangRu" Content="Русский" Margin="0,0,16,0"
+                                         IsChecked="True" Checked="RbLangRu_Checked"/>
+                            <RadioButton x:Name="RbLangEn" Content="English"
+                                         Checked="RbLangEn_Checked"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Shares -->
+                <GroupBox Header="{DynamicResource Shares}" Margin="0,0,0,8">
+                    <StackPanel Margin="4">
+                        <WrapPanel>
+                            <CheckBox x:Name="ChkShareC" Content="C$" IsChecked="True" Margin="0,0,12,0"/>
+                            <CheckBox x:Name="ChkShareD" Content="D$" Margin="0,0,12,0"/>
+                            <CheckBox x:Name="ChkUsers" Content="Users" Margin="0,0,12,0"/>
+                            <CheckBox x:Name="ChkAll" Content="{DynamicResource AllShares}"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Timeouts -->
+                <GroupBox Header="{DynamicResource Timeouts}" Margin="0,0,0,8">
+                    <StackPanel Margin="4">
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{DynamicResource PingTimeoutDesc}" Foreground="#D4D4D4" VerticalAlignment="Center"/>
+                            <TextBox x:Name="PingTimeoutBox" Grid.Column="1" Width="60" Text="300" VerticalContentAlignment="Center" HorizontalAlignment="Right"/>
+                            <TextBlock Text="мс" Foreground="#888" Grid.Column="2" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                        </Grid>
+                        <Grid Margin="0,0,0,6">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{DynamicResource ShareTimeoutDesc}" Foreground="#D4D4D4" VerticalAlignment="Center"/>
+                            <TextBox x:Name="ShareTimeoutBox" Grid.Column="1" Width="60" Text="3000" VerticalContentAlignment="Center" HorizontalAlignment="Right"/>
+                            <TextBlock Text="мс" Foreground="#888" Grid.Column="2" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                        </Grid>
+                        <Grid Margin="0,0,0,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="70"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="{DynamicResource FileTimeoutDesc}" Foreground="#D4D4D4" VerticalAlignment="Center"/>
+                            <TextBox x:Name="FileIOTimeoutBox" Grid.Column="1" Width="60" Text="5000" VerticalContentAlignment="Center" HorizontalAlignment="Right"/>
+                            <TextBlock Text="мс" Foreground="#888" Grid.Column="2" VerticalAlignment="Center" Margin="6,0,0,0"/>
+                        </Grid>
+                        <TextBlock Text="{DynamicResource TimeoutHint}" Foreground="#666" FontSize="11" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- File Pattern -->
+                <GroupBox Header="{DynamicResource FileSearch}" Margin="0,0,0,8">
+                    <StackPanel Margin="4">
+                        <TextBlock Text="{DynamicResource NamePattern}" Foreground="#AAA" Margin="0,0,0,4"/>
+                        <TextBox x:Name="FilePatternBox" Text="*.*" Margin="0,0,0,4"/>
+                        <TextBlock Text="{DynamicResource NamePatternHint}" Foreground="#666" FontSize="11"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Filters -->
+                <GroupBox Header="{DynamicResource Filters}" Margin="0,0,0,8">
+                    <StackPanel Margin="4">
+                        <TextBlock Text="{DynamicResource SizeKB}" Foreground="#AAA" Margin="0,0,0,4"/>
+                        <WrapPanel Margin="0,0,0,8">
+                            <TextBlock Text="{DynamicResource From}" Foreground="#AAA" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBox x:Name="MinSizeBox" Width="80" Margin="0,0,12,0"/>
+                            <TextBlock Text="{DynamicResource To}" Foreground="#AAA" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <TextBox x:Name="MaxSizeBox" Width="80"/>
+                        </WrapPanel>
+                        <TextBlock Text="{DynamicResource ModifiedDate}" Foreground="#AAA" Margin="0,0,0,4"/>
+                        <WrapPanel>
+                            <TextBlock Text="{DynamicResource From}" Foreground="#AAA" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <DatePicker x:Name="DateFromPicker" Width="130" Margin="0,0,10,0"/>
+                            <TextBlock Text="{DynamicResource To}" Foreground="#AAA" VerticalAlignment="Center" Margin="0,0,4,0"/>
+                            <DatePicker x:Name="DateToPicker" Width="130"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Content Search -->
+                <GroupBox Header="{DynamicResource ContentSearch}" Margin="0,0,0,8">
+                    <StackPanel Margin="4">
+                        <CheckBox x:Name="ChkSearchContent" Content="{DynamicResource SearchTextInFiles}" Margin="0,0,0,6"/>
+                        <TextBlock Text="{DynamicResource SearchTextHint}" Foreground="#AAA" Margin="0,0,0,4"/>
+                        <TextBox x:Name="ContentSearchBox" Margin="0,0,0,4"/>
+                        <TextBlock Text="{DynamicResource SearchTextExample}" Foreground="#666" FontSize="11" Margin="0,0,0,6"/>
+                        <TextBlock Text="{DynamicResource SearchInExtensions}" Foreground="#AAA" Margin="0,0,0,4"/>
+                        <TextBox x:Name="ContentExtensionsBox" Text=".txt,.log,.csv,.xml,.json,.cs,.py,.js,.md,.cfg,.ini" Margin="0,0,0,4"/>
+                        <TextBlock Text="{DynamicResource ExcludeExtensions}" Foreground="#AAA" Margin="0,0,0,4"/>
+                        <TextBox x:Name="ContentExcludeExtensionsBox" Text=".exe,.dll,.bin,.zip,.rar,.7z,.png,.jpg,.gif" Margin="0,0,0,4"/>
+                        <CheckBox x:Name="ChkIncludeNoExt" Content="{DynamicResource IncludeNoExt}" IsChecked="True" Margin="0,4,0,0"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Authentication -->
+                <GroupBox Header="{DynamicResource Auth}" Margin="0,0,0,8">
+                    <StackPanel Margin="4">
+                        <RadioButton x:Name="RbCurrentUser" Content="{DynamicResource CurrentUser}" IsChecked="True" Margin="0,0,0,6"
+                                     Checked="RbCurrentUser_Checked"/>
+                        <RadioButton x:Name="RbCustom" Content="{DynamicResource CustomCredentials}" Margin="0,0,0,6"
+                                     Checked="RbCustom_Checked"/>
+                        <StackPanel x:Name="CustomCredsPanel" IsEnabled="False" Margin="16,0,0,0">
+                            <TextBlock Text="{DynamicResource Domain}" Foreground="#AAA" Margin="0,0,0,2"/>
+                            <TextBox x:Name="DomainBox" Margin="0,0,0,4"/>
+                            <TextBlock Text="{DynamicResource Username}" Foreground="#AAA" Margin="0,0,0,2"/>
+                            <TextBox x:Name="UsernameBox" Margin="0,0,0,4"/>
+                            <TextBlock Text="{DynamicResource Password}" Foreground="#AAA" Margin="0,0,0,2"/>
+                            <PasswordBox x:Name="PasswordBox"/>
+                        </StackPanel>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Exclusions -->
+                <GroupBox Header="{DynamicResource Exclusions}" Margin="0,0,0,8">
+                    <StackPanel Margin="4">
+                        <ListBox x:Name="ExclusionsList" Height="100" Background="#333337" Foreground="#D4D4D4"
+                                 BorderBrush="#3F3F46"/>
+                        <WrapPanel Margin="0,6,0,0">
+                            <TextBox x:Name="NewExclusionBox" Width="160" Margin="0,0,6,0"/>
+                            <ComboBox x:Name="ExclusionTypeCombo" Width="70" Margin="0,0,6,0">
+                                <ComboBoxItem Content="{DynamicResource Folder}" IsSelected="True"/>
+                                <ComboBoxItem Content="{DynamicResource File}"/>
+                            </ComboBox>
+                            <Button Content="+" Width="28" Click="AddExclusion_Click"/>
+                            <Button Content="-" Width="28" Margin="4,0,0,0" Click="RemoveExclusion_Click"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </GroupBox>
+            </StackPanel>
+        </ScrollViewer>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,12,0,0">
+            <Button Content="{DynamicResource Save}" x:Name="BtnSave" Click="Save_Click" Padding="20,8" Margin="0,0,8,0"/>
+            <Button Content="{DynamicResource Cancel}" x:Name="BtnCancel" Click="Cancel_Click" Background="#555" Padding="20,8"/>
+        </StackPanel>
+    </Grid>
+</Window>
