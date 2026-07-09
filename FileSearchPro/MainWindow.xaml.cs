@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -26,7 +25,6 @@ public partial class MainWindow : Window
     private string _password = string.Empty;
     private readonly ObservableCollection<ScanLogEntry> _logEntries = new();
     private readonly DispatcherTimer _threadTimer;
-    private readonly ConcurrentBag<Task> _runningTasks = new();
     private volatile bool _isClosing;
 
     public MainWindow()
@@ -268,20 +266,16 @@ public partial class MainWindow : Window
             OnScanLog(new ScanLogEntry
             {
                 Status = ScanLogEntryStatus.Info,
-                Message = string.Format(LanguageManager.GetString("ScanStarted"), ips.Count)
+                Message = $"Настройки: ping={_config.PingTimeoutMs}мс, шары={_config.ShareTimeoutMs}мс, файлы={_config.FileIOTimeoutMs}мс"
             });
-
-            _networkScanner.SetTimeouts(_config.PingTimeoutMs, _config.ShareTimeoutMs);
-            var targets = await _networkScanner.ScanNetworkAsync(ips, _cts.Token, OnScanLog, OnScanProgress);
-            var onlineTargets = targets.Where(t => t.IsOnline).ToList();
 
             OnScanLog(new ScanLogEntry
             {
                 Status = ScanLogEntryStatus.Info,
-                Message = string.Format(LanguageManager.GetString("ScanComplete"), onlineTargets.Count, targets.Count - onlineTargets.Count)
+                Message = string.Format(LanguageManager.GetString("ScanStarted"), ips.Count)
             });
 
-            CurrentFileText.Text = string.Format(LanguageManager.GetString("FoundHostsSearching"), onlineTargets.Count);
+            _networkScanner.SetTimeouts(_config.PingTimeoutMs, _config.ShareTimeoutMs);
 
             var results = new List<SearchResult>();
             var lockObj = new object();
@@ -297,13 +291,33 @@ public partial class MainWindow : Window
                 .Select(e => e.StartsWith('.') ? e.ToLowerInvariant() : "." + e.ToLowerInvariant())
                 .ToList();
             var includeNoExt = _config.IncludeNoExt;
-
-            _searchService = new FileSearchService(_exclusions, credentials, _cts.Token, _config.FileIOTimeoutMs);
             var lastResultSnapshot = 0;
             var resultTimer = new Stopwatch();
 
+            _searchService = new FileSearchService(_exclusions, credentials, _cts.Token, _config.FileIOTimeoutMs);
+
+            // Всё в одном Task.Run — сеть + файлы, один поток
+            var totalSw = Stopwatch.StartNew();
             var searchTask = Task.Run(() =>
             {
+                // Фаза 1: Сканирование сети
+                var phaseSw = Stopwatch.StartNew();
+                var targets = _networkScanner.ScanNetwork(ips, _cts.Token, OnScanLog, OnScanProgress);
+                var onlineTargets = targets.Where(t => t.IsOnline).ToList();
+                phaseSw.Stop();
+
+                OnScanLog(new ScanLogEntry
+                {
+                    Status = ScanLogEntryStatus.Info,
+                    Message = $"Сеть: {phaseSw.Elapsed.TotalMinutes:F1}мин | Онлайн: {onlineTargets.Count} | Оффлайн: {targets.Count - onlineTargets.Count}"
+                });
+
+                Dispatcher.BeginInvoke(() =>
+                {
+                    CurrentFileText.Text = string.Format(LanguageManager.GetString("FoundHostsSearching"), onlineTargets.Count);
+                });
+
+                // Фаза 2: Поиск файлов
                 _searchService.Search(
                     onlineTargets,
                     selectedShares,
@@ -349,11 +363,17 @@ public partial class MainWindow : Window
                     onLog: OnScanLog);
             }, _cts.Token);
 
-            _runningTasks.Add(searchTask);
-            try { await searchTask; }
-            finally { /* task removed from bag on process exit */ }
+            await searchTask;
 
+            totalSw.Stop();
             var finalResults = results.ToArray();
+
+            OnScanLog(new ScanLogEntry
+            {
+                Status = ScanLogEntryStatus.Info,
+                Message = $"Всего: {totalSw.Elapsed.TotalMinutes:F1}мин | Файлов: {finalResults.Length}"
+            });
+
             Dispatcher.Invoke(() =>
             {
                 ResultsGrid.ItemsSource = finalResults;
@@ -420,7 +440,7 @@ public partial class MainWindow : Window
         base.OnClosed(e);
 
         var sw = Stopwatch.StartNew();
-        while (_runningTasks.Count > 0 && sw.ElapsedMilliseconds < 3000)
+        while (sw.ElapsedMilliseconds < 3000)
         {
             Thread.Sleep(50);
         }

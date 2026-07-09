@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.NetworkInformation;
@@ -21,53 +22,48 @@ public class NetworkScanner
         _shareTimeoutMs = shareTimeoutMs;
     }
 
-    public Task<List<NetworkTarget>> ScanNetworkAsync(List<string> ips, CancellationToken ct, Action<ScanLogEntry>? onLog = null, Action<string>? onProgress = null)
+    public List<NetworkTarget> ScanNetwork(List<string> ips, CancellationToken ct, Action<ScanLogEntry>? onLog = null, Action<string>? onProgress = null)
     {
-        return Task.Run(() =>
+        var targets = new List<NetworkTarget>();
+        var sw = Stopwatch.StartNew();
+
+        for (int i = 0; i < ips.Count; i++)
         {
-            var targets = new List<NetworkTarget>();
+            ct.ThrowIfCancellationRequested();
+            var ip = ips[i];
+            onProgress?.Invoke($"[{i + 1}/{ips.Count}] {ip}");
 
-            foreach (var ip in ips)
+            NetworkTarget target;
+            if (_cache.TryGetValue(ip, out var cached) && (DateTime.Now - cached.Scanned) < CacheDuration)
             {
-                ct.ThrowIfCancellationRequested();
-                onProgress?.Invoke(ip);
-
-                NetworkTarget target;
-                if (_cache.TryGetValue(ip, out var cached) && (DateTime.Now - cached.Scanned) < CacheDuration)
-                {
-                    target = cached.Target;
-                }
-                else
-                {
-                    target = ScanHost(ip);
-                    _cache[ip] = (target, DateTime.Now);
-                }
-
-                targets.Add(target);
-
+                target = cached.Target;
                 onLog?.Invoke(new ScanLogEntry
                 {
                     IpAddress = ip,
                     Status = target.IsOnline ? ScanLogEntryStatus.Online : ScanLogEntryStatus.Unreachable,
-                    Message = target.IsOnline
-                        ? (target.AvailableShares.Count > 0
-                            ? $"Online — shares: {string.Join(", ", target.AvailableShares)}"
-                            : "Online — no accessible shares")
-                        : "Unreachable (ping timeout)",
-                    SharesFound = target.AvailableShares
+                    Message = $"(из кэша) {sw.ElapsedMilliseconds}мс"
                 });
             }
+            else
+            {
+                target = ScanHost(ip, onLog);
+                _cache[ip] = (target, DateTime.Now);
+            }
 
-            return targets;
-        }, ct);
+            targets.Add(target);
+        }
+
+        return targets;
     }
 
     public void ClearCache() => _cache.Clear();
 
-    private NetworkTarget ScanHost(string ip)
+    private NetworkTarget ScanHost(string ip, Action<ScanLogEntry>? onLog)
     {
         var target = new NetworkTarget { IpAddress = ip };
 
+        // Ping
+        var sw = Stopwatch.StartNew();
         try
         {
             using var ping = new Ping();
@@ -78,11 +74,50 @@ public class NetworkScanner
         {
             target.IsOnline = false;
         }
+        sw.Stop();
 
-        if (target.IsOnline)
+        if (!target.IsOnline)
         {
-            target.AvailableShares = DiscoverShares(ip);
+            onLog?.Invoke(new ScanLogEntry
+            {
+                IpAddress = ip,
+                Status = ScanLogEntryStatus.Unreachable,
+                Message = $"Ping: {sw.ElapsedMilliseconds}мс — timeout"
+            });
+            return target;
         }
+
+        // TCP port 445
+        sw.Restart();
+        var portOpen = IsPortOpen(ip, 445, 1000);
+        sw.Stop();
+
+        if (!portOpen)
+        {
+            onLog?.Invoke(new ScanLogEntry
+            {
+                IpAddress = ip,
+                Status = ScanLogEntryStatus.Online,
+                Message = $"Ping: {sw.ElapsedMilliseconds}мс — port 445 закрыт"
+            });
+            return target;
+        }
+
+        // Shares
+        sw.Restart();
+        target.AvailableShares = DiscoverShares(ip);
+        sw.Stop();
+
+        var shareMsg = target.AvailableShares.Count > 0
+            ? $"shares: {string.Join(", ", target.AvailableShares)}"
+            : "no accessible shares";
+
+        onLog?.Invoke(new ScanLogEntry
+        {
+            IpAddress = ip,
+            Status = ScanLogEntryStatus.Online,
+            Message = $"Ping: {sw.ElapsedMilliseconds}мс — {shareMsg}"
+        });
 
         return target;
     }
@@ -91,20 +126,38 @@ public class NetworkScanner
     {
         var shares = new List<string>();
         string[] commonShares = ["C$", "D$", "ADMIN$", "Users", "IPC$"];
+        var sw = Stopwatch.StartNew();
 
         foreach (var share in commonShares)
         {
+            if (sw.ElapsedMilliseconds >= _shareTimeoutMs) break;
+
             try
             {
                 var path = $"\\\\{ip}\\{share}";
                 var task = Task.Run(() => Directory.Exists(path));
-                if (task.Wait(_shareTimeoutMs) && task.Result)
+                var remaining = _shareTimeoutMs - (int)sw.ElapsedMilliseconds;
+                if (remaining <= 0) break;
+                if (task.Wait(Math.Min(remaining, 1000)) && task.Result)
                     shares.Add(share);
             }
             catch { }
         }
 
         return shares;
+    }
+
+    private bool IsPortOpen(string ip, int port, int timeoutMs)
+    {
+        try
+        {
+            using var client = new System.Net.Sockets.TcpClient();
+            var task = client.ConnectAsync(ip, port);
+            if (task.Wait(timeoutMs))
+                return task.IsCompletedSuccessfully;
+            return false;
+        }
+        catch { return false; }
     }
 
     public static List<string> ParseIpRange(string input)

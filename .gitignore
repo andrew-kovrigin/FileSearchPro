@@ -51,3 +51,6 @@ Desktop.ini
 
 ## Settings (user-specific)
 FileSearchPro/settings/config.json
+
+## MiMoCode
+.mimocode/
