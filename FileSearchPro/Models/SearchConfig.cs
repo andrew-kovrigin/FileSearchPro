@@ -4,6 +4,7 @@ public class SearchConfig
 {
     public string LastIpRange { get; set; } = string.Empty;
     public List<string> SelectedShares { get; set; } = new() { "C$" };
+    public bool SearchAllShares { get; set; }
     public string FilePattern { get; set; } = "*.*";
     public long? MinSize { get; set; }
     public long? MaxSize { get; set; }

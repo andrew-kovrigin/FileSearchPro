@@ -9,6 +9,7 @@
                 <ResourceDictionary Source="Resources/Strings.ru.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <converters:ScanStatusToBrushConverter x:Key="ScanStatusToBrushConverter"/>
+            <converters:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
         <Style TargetType="DataGrid">
             <Setter Property="Background" Value="#1E1E1E"/>
             <Setter Property="Foreground" Value="#D4D4D4"/>

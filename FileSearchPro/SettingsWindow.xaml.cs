@@ -32,7 +32,7 @@ public partial class SettingsWindow : Window
         ChkShareC.IsChecked = Config.SelectedShares.Contains("C$");
         ChkShareD.IsChecked = Config.SelectedShares.Contains("D$");
         ChkUsers.IsChecked = Config.SelectedShares.Contains("Users");
-        ChkAll.IsChecked = Config.SelectedShares.Count >= 5;
+        ChkAll.IsChecked = Config.SearchAllShares;
 
         FilePatternBox.Text = Config.FilePattern;
 
@@ -70,10 +70,18 @@ public partial class SettingsWindow : Window
 
     private SearchConfig CollectConfigFromControls()
     {
+        var searchAll = ChkAll.IsChecked == true;
         var selectedShares = new List<string>();
-        if (ChkShareC.IsChecked == true) selectedShares.Add("C$");
-        if (ChkShareD.IsChecked == true) selectedShares.Add("D$");
-        if (ChkUsers?.IsChecked == true) selectedShares.Add("Users");
+        if (searchAll)
+        {
+            selectedShares = new List<string> { "C$", "D$", "ADMIN$", "Users", "IPC$" };
+        }
+        else
+        {
+            if (ChkShareC.IsChecked == true) selectedShares.Add("C$");
+            if (ChkShareD.IsChecked == true) selectedShares.Add("D$");
+            if (ChkUsers?.IsChecked == true) selectedShares.Add("Users");
+        }
 
         long? minSize = null, maxSize = null;
         if (long.TryParse(MinSizeBox.Text, out long minKb)) minSize = minKb * 1024;
@@ -83,6 +91,7 @@ public partial class SettingsWindow : Window
         {
             LastIpRange = Config.LastIpRange,
             SelectedShares = selectedShares,
+            SearchAllShares = searchAll,
             FilePattern = FilePatternBox.Text,
             MinSize = minSize,
             MaxSize = maxSize,

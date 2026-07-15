@@ -55,13 +55,32 @@ public class FileSearchService
 
             var validShares = shares.Where(s => target.AvailableShares.Contains(s)).ToList();
 
+            onLog?.Invoke(new ScanLogEntry
+            {
+                IpAddress = target.IpAddress,
+                Status = ScanLogEntryStatus.Scanning,
+                Message = $"Доступные шары: [{string.Join(", ", target.AvailableShares)}], ищем: [{string.Join(", ", validShares)}]"
+            });
+
+            if (validShares.Count == 0)
+            {
+                onLog?.Invoke(new ScanLogEntry
+                {
+                    IpAddress = target.IpAddress,
+                    Status = ScanLogEntryStatus.Scanning,
+                    Message = $"Нет доступных шар для поиска на {target.IpAddress}"
+                });
+                continue;
+            }
+
             foreach (var share in validShares)
             {
                 _ct.ThrowIfCancellationRequested();
                 var uncPath = $"\\\\{target.IpAddress}\\{share}";
-                SearchIterative(uncPath, target.IpAddress, share, filePattern,
-                    searchContent, searchWords, contentExtensions, excludeExtensions, includeNoExt,
-                    onResult, onCurrentFile, onScanned);
+                ImpersonationHelper.RunAs(_credentials, () =>
+                    SearchIterative(uncPath, target.IpAddress, share, filePattern,
+                        searchContent, searchWords, contentExtensions, excludeExtensions, includeNoExt,
+                        onResult, onCurrentFile, onScanned));
             }
         }
     }
@@ -84,12 +103,20 @@ public class FileSearchService
             try
             {
                 var pattern = searchContent ? "*" : filePattern;
-                var task = Task.Run(() => Directory.EnumerateFiles(directory, pattern, new EnumerationOptions
+                var task = Task.Run(() =>
                 {
-                    RecurseSubdirectories = false,
-                    IgnoreInaccessible = true,
-                    AttributesToSkip = FileAttributes.System
-                }).ToList());
+                    try
+                    {
+                        return Directory.EnumerateFiles(directory, pattern, new EnumerationOptions
+                        {
+                            RecurseSubdirectories = false,
+                            IgnoreInaccessible = true,
+                            AttributesToSkip = FileAttributes.System
+                        }).ToList();
+                    }
+                    catch (IOException) { return new List<string>(); }
+                    catch (UnauthorizedAccessException) { return new List<string>(); }
+                });
                 if (!task.Wait(5000)) continue;
                 files = task.Result;
             }
@@ -119,7 +146,14 @@ public class FileSearchService
 
                     if (!hasNoExt && excludeExtensions.Contains(ext)) continue;
 
-                    var info = new FileInfo(file);
+                    FileInfo info;
+                    try
+                    {
+                        info = new FileInfo(file);
+                        if (!info.Exists) continue;
+                    }
+                    catch (IOException) { continue; }
+                    catch (UnauthorizedAccessException) { continue; }
 
                     onResult(new SearchResult
                     {
@@ -131,17 +165,27 @@ public class FileSearchService
                         LastModified = info.LastWriteTime
                     });
                 }
+                catch (IOException) { continue; }
+                catch (UnauthorizedAccessException) { continue; }
                 catch { }
             }
 
             IEnumerable<string> subdirs;
             try
             {
-                var task = Task.Run(() => Directory.EnumerateDirectories(directory, "*", new EnumerationOptions
+                var task = Task.Run(() =>
                 {
-                    IgnoreInaccessible = true,
-                    AttributesToSkip = FileAttributes.System | FileAttributes.Hidden
-                }).ToList());
+                    try
+                    {
+                        return Directory.EnumerateDirectories(directory, "*", new EnumerationOptions
+                        {
+                            IgnoreInaccessible = true,
+                            AttributesToSkip = FileAttributes.System | FileAttributes.Hidden
+                        }).ToList();
+                    }
+                    catch (IOException) { return new List<string>(); }
+                    catch (UnauthorizedAccessException) { return new List<string>(); }
+                });
                 if (!task.Wait(5000)) continue;
                 subdirs = task.Result;
             }
@@ -166,20 +210,26 @@ public class FileSearchService
         {
             var task = Task.Run(() =>
             {
-                using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                using var reader = new StreamReader(stream);
-                var buffer = new char[4096];
-                int read;
-                while ((read = reader.Read(buffer, 0, buffer.Length)) > 0)
+                try
                 {
-                    var chunk = new string(buffer, 0, read);
-                    foreach (var word in words)
+                    using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                    using var reader = new StreamReader(stream);
+                    var buffer = new char[4096];
+                    int read;
+                    while ((read = reader.Read(buffer, 0, buffer.Length)) > 0)
                     {
-                        if (chunk.Contains(word, StringComparison.OrdinalIgnoreCase))
-                            return true;
+                        var chunk = new string(buffer, 0, read);
+                        foreach (var word in words)
+                        {
+                            if (chunk.Contains(word, StringComparison.OrdinalIgnoreCase))
+                                return true;
+                        }
                     }
+                    return false;
                 }
-                return false;
+                catch (IOException) { return false; }
+                catch (UnauthorizedAccessException) { return false; }
+                catch { return false; }
             });
             return task.Wait(5000) && task.Result;
         }
