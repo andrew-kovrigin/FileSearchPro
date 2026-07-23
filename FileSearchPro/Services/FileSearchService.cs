@@ -35,7 +35,8 @@ public class FileSearchService
         Action<SearchResult> onResult,
         Action<string> onCurrentFile,
         Action<int> onScanned,
-        Action<ScanLogEntry>? onLog = null)
+        Action<ScanLogEntry>? onLog = null,
+        bool searchAllShares = false)
     {
         var searchWords = searchContent && !string.IsNullOrEmpty(contentText)
             ? contentText.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -50,16 +51,18 @@ public class FileSearchService
             {
                 IpAddress = target.IpAddress,
                 Status = ScanLogEntryStatus.Scanning,
-                Message = $"Scanning files on {target.IpAddress}..."
+                Message = string.Format(LanguageManager.GetString("LogScanningFiles"), target.IpAddress)
             });
 
-            var validShares = shares.Where(s => target.AvailableShares.Contains(s)).ToList();
+            var validShares = searchAllShares
+                ? target.AvailableShares.ToList()
+                : shares.Where(s => target.AvailableShares.Contains(s)).ToList();
 
             onLog?.Invoke(new ScanLogEntry
             {
                 IpAddress = target.IpAddress,
                 Status = ScanLogEntryStatus.Scanning,
-                Message = $"Доступные шары: [{string.Join(", ", target.AvailableShares)}], ищем: [{string.Join(", ", validShares)}]"
+                Message = string.Format(LanguageManager.GetString("LogAvailableShares"), string.Join(", ", target.AvailableShares), string.Join(", ", validShares))
             });
 
             if (validShares.Count == 0)
@@ -68,7 +71,7 @@ public class FileSearchService
                 {
                     IpAddress = target.IpAddress,
                     Status = ScanLogEntryStatus.Scanning,
-                    Message = $"Нет доступных шар для поиска на {target.IpAddress}"
+                    Message = string.Format(LanguageManager.GetString("LogNoShares"), target.IpAddress)
                 });
                 continue;
             }
@@ -208,22 +211,42 @@ public class FileSearchService
     {
         try
         {
+            var ext = Path.GetExtension(filePath).ToLowerInvariant();
             var task = Task.Run(() =>
             {
                 try
                 {
-                    using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                    using var reader = new StreamReader(stream);
-                    var buffer = new char[4096];
-                    int read;
-                    while ((read = reader.Read(buffer, 0, buffer.Length)) > 0)
+                    string content;
+                    if (ext == ".docx")
                     {
-                        var chunk = new string(buffer, 0, read);
-                        foreach (var word in words)
+                        content = DocxReader.ExtractText(filePath);
+                    }
+                    else if (ext == ".xlsx")
+                    {
+                        content = ExcelReader.ExtractText(filePath);
+                    }
+                    else
+                    {
+                        using var stream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                        using var reader = new StreamReader(stream);
+                        var buffer = new char[4096];
+                        int read;
+                        while ((read = reader.Read(buffer, 0, buffer.Length)) > 0)
                         {
-                            if (chunk.Contains(word, StringComparison.OrdinalIgnoreCase))
-                                return true;
+                            var chunk = new string(buffer, 0, read);
+                            foreach (var word in words)
+                            {
+                                if (chunk.Contains(word, StringComparison.OrdinalIgnoreCase))
+                                    return true;
+                            }
                         }
+                        return false;
+                    }
+
+                    foreach (var word in words)
+                    {
+                        if (content.Contains(word, StringComparison.OrdinalIgnoreCase))
+                            return true;
                     }
                     return false;
                 }

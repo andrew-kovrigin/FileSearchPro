@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Diagnostics;
 using System.Windows;
 using System.Windows.Controls;
 using FileSearchPro.ViewModels;
@@ -43,13 +42,5 @@ public partial class MainWindow : Window
     private void Window_Closing(object? sender, System.ComponentModel.CancelEventArgs e)
     {
         _viewModel?.OnClosing();
-
-        var sw = Stopwatch.StartNew();
-        while (sw.ElapsedMilliseconds < 3000)
-        {
-            System.Threading.Thread.Sleep(50);
-        }
-
-        Process.GetCurrentProcess().Kill();
     }
 }

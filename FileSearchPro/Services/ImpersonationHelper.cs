@@ -43,10 +43,20 @@ public static class ImpersonationHelper
                 out tokenHandle);
 
             if (!loggedOn)
+            {
+                var error = Marshal.GetLastWin32Error();
+                System.Diagnostics.Debug.WriteLine(
+                    $"[ImpersonationHelper] LogonUserW failed for '{credential.Domain}\\{credential.UserName}': Win32Error={error}");
                 return func();
+            }
 
             if (!ImpersonateLoggedOnUser(tokenHandle))
+            {
+                var error = Marshal.GetLastWin32Error();
+                System.Diagnostics.Debug.WriteLine(
+                    $"[ImpersonationHelper] ImpersonateLoggedOnUser failed: Win32Error={error}");
                 return func();
+            }
 
             try
             {

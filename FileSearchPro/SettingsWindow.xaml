@@ -29,11 +29,14 @@
                 <!-- Shares -->
                 <GroupBox Header="{DynamicResource Shares}" Margin="0,0,0,8">
                     <StackPanel Margin="4">
-                        <WrapPanel>
+                        <CheckBox x:Name="ChkAll" Content="{DynamicResource SearchAllShares}"
+                                  IsChecked="True" Checked="ChkAll_Checked" Unchecked="ChkAll_Unchecked"/>
+                        <TextBlock Text="{DynamicResource SearchAllSharesHint}" Foreground="#666" FontSize="11"
+                                   Margin="20,0,0,6"/>
+                        <WrapPanel x:Name="ShareSelectionPanel" IsEnabled="False" Margin="20,0,0,0">
                             <CheckBox x:Name="ChkShareC" Content="C$" IsChecked="True" Margin="0,0,12,0"/>
-                            <CheckBox x:Name="ChkShareD" Content="D$" Margin="0,0,12,0"/>
-                            <CheckBox x:Name="ChkUsers" Content="Users" Margin="0,0,12,0"/>
-                            <CheckBox x:Name="ChkAll" Content="{DynamicResource AllShares}"/>
+                            <CheckBox x:Name="ChkShareD" Content="D$" IsChecked="True" Margin="0,0,12,0"/>
+                            <CheckBox x:Name="ChkUsers" Content="Users" IsChecked="True"/>
                         </WrapPanel>
                     </StackPanel>
                 </GroupBox>
@@ -112,7 +115,7 @@
                         <TextBox x:Name="ContentSearchBox" Margin="0,0,0,4"/>
                         <TextBlock Text="{DynamicResource SearchTextExample}" Foreground="#666" FontSize="11" Margin="0,0,0,6"/>
                         <TextBlock Text="{DynamicResource SearchInExtensions}" Foreground="#AAA" Margin="0,0,0,4"/>
-                        <TextBox x:Name="ContentExtensionsBox" Text=".txt,.log,.csv,.xml,.json,.cs,.py,.js,.md,.cfg,.ini" Margin="0,0,0,4"/>
+                        <TextBox x:Name="ContentExtensionsBox" Text=".txt,.log,.csv,.xml,.json,.cs,.py,.js,.md,.cfg,.ini,.docx,.xlsx" Margin="0,0,0,4"/>
                         <TextBlock Text="{DynamicResource ExcludeExtensions}" Foreground="#AAA" Margin="0,0,0,4"/>
                         <TextBox x:Name="ContentExcludeExtensionsBox" Text=".exe,.dll,.bin,.zip,.rar,.7z,.png,.jpg,.gif" Margin="0,0,0,4"/>
                         <CheckBox x:Name="ChkIncludeNoExt" Content="{DynamicResource IncludeNoExt}" IsChecked="True" Margin="0,4,0,0"/>

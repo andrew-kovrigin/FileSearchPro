@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using FileSearchPro.Models;
@@ -12,7 +13,7 @@ namespace FileSearchPro.Services;
 public class NetworkScanner
 {
     private static readonly ConcurrentDictionary<string, (NetworkTarget Target, DateTime Scanned)> _cache = new();
-    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(5);
+    private static readonly TimeSpan CacheDuration = TimeSpan.FromMinutes(2);
     private int _pingTimeoutMs = 300;
     private int _shareTimeoutMs = 3000;
     private NetworkCredential _credentials = CredentialCache.DefaultNetworkCredentials;
@@ -30,6 +31,7 @@ public class NetworkScanner
 
     public List<NetworkTarget> ScanNetwork(List<string> ips, CancellationToken ct, Action<ScanLogEntry>? onLog = null, Action<string>? onProgress = null)
     {
+        _cache.Clear();
         var targets = new ConcurrentBag<NetworkTarget>();
         var sw = Stopwatch.StartNew();
 
@@ -60,7 +62,7 @@ public class NetworkScanner
                 {
                     IpAddress = ip,
                     Status = target.IsOnline ? ScanLogEntryStatus.Online : ScanLogEntryStatus.Unreachable,
-                    Message = $"(из кэша) {sw.ElapsedMilliseconds}мс — {shareMsg}"
+                    Message = string.Format(LanguageManager.GetString("LogFromCache"), sw.ElapsedMilliseconds, shareMsg)
                 });
             }
             else
@@ -81,37 +83,56 @@ public class NetworkScanner
     {
         var target = new NetworkTarget { IpAddress = ip };
 
-        // Ping
+        // Ping (ICMP) — may be blocked by Windows Firewall
         var sw = Stopwatch.StartNew();
+        string? pingError = null;
         try
         {
             using var ping = new Ping();
             var reply = ping.Send(ip, _pingTimeoutMs);
             target.IsOnline = reply.Status == IPStatus.Success;
+            if (!target.IsOnline)
+                pingError = reply.Status.ToString();
         }
-        catch
+        catch (Exception ex)
         {
             target.IsOnline = false;
+            pingError = ex.Message;
         }
         sw.Stop();
         var pingMs = sw.ElapsedMilliseconds;
 
-        if (!target.IsOnline)
+        // TCP port 445 — fallback if ping failed (ICMP may be blocked)
+        sw.Restart();
+        string? portError = null;
+        var portOpen = IsPortOpenWithRetry(ip, 445, 1000, 2, out portError);
+        sw.Stop();
+        var portMs = sw.ElapsedMilliseconds;
+
+        if (!target.IsOnline && !portOpen)
         {
+            var diag = pingError != null ? $"ping: {pingError}" : "ping: blocked";
+            if (portError != null) diag += $", port445: {portError}";
             onLog?.Invoke(new ScanLogEntry
             {
                 IpAddress = ip,
                 Status = ScanLogEntryStatus.Unreachable,
-                Message = $"Ping: {pingMs}мс — timeout"
+                Message = string.Format(LanguageManager.GetString("LogPingPort"), pingMs, portMs, diag)
             });
             return target;
         }
 
-        // TCP port 445
-        sw.Restart();
-        var portOpen = IsPortOpen(ip, 445, 1000);
-        sw.Stop();
-        var portMs = sw.ElapsedMilliseconds;
+        // If ping failed but port 445 is open — host is online (ICMP blocked by firewall)
+        if (!target.IsOnline && portOpen)
+        {
+            target.IsOnline = true;
+            onLog?.Invoke(new ScanLogEntry
+            {
+                IpAddress = ip,
+                Status = ScanLogEntryStatus.Online,
+                Message = string.Format(LanguageManager.GetString("LogPingBlockedPort445"), pingMs, portMs)
+            });
+        }
 
         if (!portOpen)
         {
@@ -119,14 +140,14 @@ public class NetworkScanner
             {
                 IpAddress = ip,
                 Status = ScanLogEntryStatus.Online,
-                Message = $"Ping: {pingMs}мс, порт 445: {portMs}мс — port 445 закрыт"
+                Message = string.Format(LanguageManager.GetString("LogPingPort"), pingMs, portMs, LanguageManager.GetString("LogPortClosed445"))
             });
             return target;
         }
 
-        // Shares — параллельно
+        // Shares — с retry
         sw.Restart();
-        target.AvailableShares = DiscoverSharesParallel(ip);
+        target.AvailableShares = DiscoverSharesWithRetry(ip, 2);
         sw.Stop();
         var sharesMs = sw.ElapsedMilliseconds;
 
@@ -138,49 +159,60 @@ public class NetworkScanner
         {
             IpAddress = ip,
             Status = ScanLogEntryStatus.Online,
-            Message = $"Ping: {pingMs}мс, шары: {sharesMs}мс — {shareMsg}"
+            Message = string.Format(LanguageManager.GetString("LogSharesSummary"), pingMs, portMs, sharesMs, shareMsg)
         });
 
         return target;
     }
 
-    private List<string> DiscoverSharesParallel(string ip)
+    private bool IsPortOpenWithRetry(string ip, int port, int timeoutMs, int maxRetries, out string? error)
     {
-        var shares = new ConcurrentBag<string>();
-        string[] commonShares = ["C$", "D$", "ADMIN$", "Users", "IPC$"];
-
-        var options = new ParallelOptions
-        {
-            MaxDegreeOfParallelism = commonShares.Length
-        };
-
-        Parallel.ForEach(commonShares, options, share =>
+        error = null;
+        for (int attempt = 0; attempt <= maxRetries; attempt++)
         {
             try
             {
-                var path = $"\\\\{ip}\\{share}";
-                var task = Task.Run(() =>
-                    ImpersonationHelper.RunAs(_credentials, () => Directory.Exists(path)));
-                if (task.Wait(_shareTimeoutMs) && task.Result)
-                    shares.Add(share);
-            }
-            catch { }
-        });
+                using var client = new TcpClient();
+                var task = client.ConnectAsync(ip, port);
+                if (task.Wait(timeoutMs))
+                {
+                    if (task.IsCompletedSuccessfully)
+                        return true;
 
-        return shares.ToList();
+                    error = task.Exception?.InnerException?.Message ?? "connection failed";
+                }
+                else
+                {
+                    error = "timeout";
+                }
+            }
+            catch (SocketException ex)
+            {
+                error = $"SocketError({ex.SocketErrorCode}): {ex.Message}";
+            }
+            catch (Exception ex)
+            {
+                error = ex.Message;
+            }
+
+            if (attempt < maxRetries - 1)
+                Thread.Sleep(200);
+        }
+        return false;
     }
 
-    private bool IsPortOpen(string ip, int port, int timeoutMs)
+    private List<string> DiscoverSharesWithRetry(string ip, int maxRetries)
     {
-        try
+        for (int attempt = 0; attempt < maxRetries; attempt++)
         {
-            using var client = new System.Net.Sockets.TcpClient();
-            var task = client.ConnectAsync(ip, port);
-            if (task.Wait(timeoutMs))
-                return task.IsCompletedSuccessfully;
-            return false;
+            var result = ImpersonationHelper.RunAs(_credentials, () =>
+                ShareEnumerator.EnumerateShares(ip));
+            if (result.Count > 0 || attempt == maxRetries - 1)
+                return result;
+
+            Thread.Sleep(300 * (attempt + 1));
         }
-        catch { return false; }
+        return new List<string>();
     }
 
     public static List<string> ParseIpRange(string input)

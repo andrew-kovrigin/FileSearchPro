@@ -36,9 +36,9 @@ A network file search tool for Windows. Supports hidden shares (C$, D$, ADMIN$),
 - **Network scanning** — search by IP addresses and ranges (192.168.1.1-254)
 - **Hidden shares** — C$, D$, Users, ADMIN$, IPC$
 - **File name search** — glob patterns (*.pdf, report_*.*)
-- **Content search** — multiple words via comma, match highlighting
+- **Content search** — multiple words via comma, match highlighting, supports .docx and .xlsx
 - **Exclusions** — folders, files, extensions (configurable)
-- **Preview** — text files with highlighted matches
+- **Preview** — text files, .docx and .xlsx with highlighted matches
 - **Scan journal** — real-time log of each host (IP, status, shares)
 - **Journal export** — copy to clipboard + save to .log file
 - **Settings** — modal window with timeouts, shares, filters
@@ -120,6 +120,8 @@ FileSearchPro/
     ├── Services/
     │   ├── NetworkScanner.cs — Network Scanning
     │   ├── FileSearchService.cs — File Search
+    │   ├── DocxReader.cs — .docx File Reader
+    │   ├── ExcelReader.cs — .xlsx File Reader
     │   ├── ExclusionService.cs — Exclusions
     │   ├── AuthService.cs — Authentication
     │   ├── SettingsService.cs — Settings
@@ -140,4 +142,4 @@ FileSearchPro/
 
 ---
 
-**Tags:** `network file search` `C# WPF application` `search files by IP` `Windows network scanner` `find files in network` `hidden shares search` `C$ D$ access` `file content search` `grep network` `search text in files` `scan journal` `localization`
+**Tags:** `network file search` `C# WPF application` `search files by IP` `Windows network scanner` `find files in network` `hidden shares search` `C$ D$ access` `file content search` `grep network` `search text in files` `scan journal` `localization` `docx search` `xlsx search` `Office document search`

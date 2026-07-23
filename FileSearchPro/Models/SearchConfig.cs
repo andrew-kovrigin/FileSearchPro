@@ -15,7 +15,7 @@ public class SearchConfig
     public string Domain { get; set; } = string.Empty;
     public bool SearchContent { get; set; }
     public string ContentSearchText { get; set; } = string.Empty;
-    public string ContentExtensions { get; set; } = ".txt,.log,.csv,.xml,.json,.cs,.py,.js,.md,.cfg,.ini";
+    public string ContentExtensions { get; set; } = ".txt,.log,.csv,.xml,.json,.cs,.py,.js,.md,.cfg,.ini,.docx,.xlsx";
     public string ExcludeExtensions { get; set; } = ".exe,.dll,.bin,.zip,.rar,.7z,.png,.jpg,.gif";
     public bool IncludeNoExt { get; set; } = true;
     public string Language { get; set; } = "ru";

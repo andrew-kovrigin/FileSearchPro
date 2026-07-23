@@ -29,10 +29,11 @@ public partial class SettingsWindow : Window
         else
             RbLangRu.IsChecked = true;
 
+        ChkAll.IsChecked = Config.SearchAllShares;
         ChkShareC.IsChecked = Config.SelectedShares.Contains("C$");
         ChkShareD.IsChecked = Config.SelectedShares.Contains("D$");
         ChkUsers.IsChecked = Config.SelectedShares.Contains("Users");
-        ChkAll.IsChecked = Config.SearchAllShares;
+        ShareSelectionPanel.IsEnabled = Config.SearchAllShares == false;
 
         FilePatternBox.Text = Config.FilePattern;
 
@@ -72,11 +73,7 @@ public partial class SettingsWindow : Window
     {
         var searchAll = ChkAll.IsChecked == true;
         var selectedShares = new List<string>();
-        if (searchAll)
-        {
-            selectedShares = new List<string> { "C$", "D$", "ADMIN$", "Users", "IPC$" };
-        }
-        else
+        if (!searchAll)
         {
             if (ChkShareC.IsChecked == true) selectedShares.Add("C$");
             if (ChkShareD.IsChecked == true) selectedShares.Add("D$");
@@ -134,6 +131,18 @@ public partial class SettingsWindow : Window
     {
         if (CustomCredsPanel != null)
             CustomCredsPanel.IsEnabled = true;
+    }
+
+    private void ChkAll_Checked(object sender, RoutedEventArgs e)
+    {
+        if (ShareSelectionPanel != null)
+            ShareSelectionPanel.IsEnabled = false;
+    }
+
+    private void ChkAll_Unchecked(object sender, RoutedEventArgs e)
+    {
+        if (ShareSelectionPanel != null)
+            ShareSelectionPanel.IsEnabled = true;
     }
 
     private void AddExclusion_Click(object sender, RoutedEventArgs e)

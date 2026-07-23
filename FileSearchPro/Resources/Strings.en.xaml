@@ -18,7 +18,7 @@
     <s:String x:Key="ColSize">Size</s:String>
     <s:String x:Key="ColModified">Modified</s:String>
     <s:String x:Key="Preview">Preview:</s:String>
-    <s:String x:Key="ThreadInfo">Threads: {0} | Pool: {1}/{2} | Mem: {3}MB</s:String>
+    <s:String x:Key="ThreadInfo">Threads: {0} | Memory: {1}MB</s:String>
     <s:String x:Key="ScanLog">Scan log</s:String>
     <s:String x:Key="EntriesCount">{0} entries</s:String>
     <s:String x:Key="ClearLog">Clear</s:String>
@@ -34,6 +34,8 @@
     <s:String x:Key="SettingsTitle">Search settings</s:String>
     <s:String x:Key="Shares">Shares</s:String>
     <s:String x:Key="AllShares">All</s:String>
+    <s:String x:Key="SearchAllShares">Search all discovered shares</s:String>
+    <s:String x:Key="SearchAllSharesHint">Automatically find and search all disk shares (C$, D$, Users, etc.)</s:String>
     <s:String x:Key="Timeouts">Timeouts (increase for slow networks)</s:String>
     <s:String x:Key="PingTimeoutDesc">Wait time for host ping response</s:String>
     <s:String x:Key="ShareTimeoutDesc">Wait time for network share availability check</s:String>
@@ -87,4 +89,21 @@
     <s:String x:Key="MsgErrorPrefix">Error: {0}</s:String>
     <s:String x:Key="SearchError">Search error</s:String>
     <s:String x:Key="MsgErrorTitle">Error</s:String>
+    <s:String x:Key="PreviewFiltered">Showing lines containing "{0}" ({1} of {2} lines)</s:String>
+    <s:String x:Key="PreviewNoMatches">No lines found containing "{0}"</s:String>
+
+    <!-- Log messages -->
+    <s:String x:Key="LogSettings">Settings: ping={0}ms, shares={1}ms, files={2}ms</s:String>
+    <s:String x:Key="AuthCurrentUser">current user</s:String>
+    <s:String x:Key="LogAuth">Auth: {0}</s:String>
+    <s:String x:Key="LogNetworkSummary">Network: {0:F1}min | Online: {1} | Offline: {2}</s:String>
+    <s:String x:Key="LogTotalSummary">Total: {0:F1}min | Files: {1}</s:String>
+    <s:String x:Key="LogScanningFiles">Scanning files on {0}...</s:String>
+    <s:String x:Key="LogAvailableShares">Available shares: [{0}], searching: [{1}]</s:String>
+    <s:String x:Key="LogNoShares">No available shares for search on {0}</s:String>
+    <s:String x:Key="LogFromCache">(cached) {0}ms — {1}</s:String>
+    <s:String x:Key="LogPingPort">Ping: {0}ms, port 445: {1}ms — {2}</s:String>
+    <s:String x:Key="LogPingBlockedPort445">Ping: {0}ms (blocked), port 445: {1}ms — OK</s:String>
+    <s:String x:Key="LogSharesSummary">Ping: {0}ms, port 445: {1}ms, shares: {2}ms — {3}</s:String>
+    <s:String x:Key="LogPortClosed445">port 445 closed</s:String>
 </ResourceDictionary>

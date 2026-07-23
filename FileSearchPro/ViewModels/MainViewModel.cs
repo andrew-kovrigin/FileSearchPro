@@ -63,6 +63,9 @@ public partial class MainViewModel : ObservableObject
     [ObservableProperty]
     private string _previewText = string.Empty;
 
+    [ObservableProperty]
+    private string _previewSearchText = string.Empty;
+
     public ObservableCollection<ScanLogEntry> LogEntries { get; } = new();
     public ObservableCollection<SearchResult> Results { get; } = new();
 
@@ -178,16 +181,16 @@ public partial class MainViewModel : ObservableObject
             OnScanLog(new ScanLogEntry
             {
                 Status = ScanLogEntryStatus.Info,
-                Message = $"Настройки: ping={_config.PingTimeoutMs}мс, шары={_config.ShareTimeoutMs}мс, файлы={_config.FileIOTimeoutMs}мс"
+                Message = string.Format(LanguageManager.GetString("LogSettings"), _config.PingTimeoutMs, _config.ShareTimeoutMs, _config.FileIOTimeoutMs)
             });
 
             var authMode = _config.UseCurrentUser
-                ? "текущий пользователь"
+                ? LanguageManager.GetString("AuthCurrentUser")
                 : $"{_config.Domain}\\{_config.Username}";
             OnScanLog(new ScanLogEntry
             {
                 Status = ScanLogEntryStatus.Info,
-                Message = $"Авторизация: {authMode}"
+                Message = string.Format(LanguageManager.GetString("LogAuth"), authMode)
             });
 
             OnScanLog(new ScanLogEntry
@@ -229,7 +232,7 @@ public partial class MainViewModel : ObservableObject
                 OnScanLog(new ScanLogEntry
                 {
                     Status = ScanLogEntryStatus.Info,
-                    Message = $"Сеть: {phaseSw.Elapsed.TotalMinutes:F1}мин | Онлайн: {onlineTargets.Count} | Оффлайн: {targets.Count - onlineTargets.Count}"
+                    Message = string.Format(LanguageManager.GetString("LogNetworkSummary"), phaseSw.Elapsed.TotalMinutes, onlineTargets.Count, targets.Count - onlineTargets.Count)
                 });
 
                 App.Current.Dispatcher.BeginInvoke(() =>
@@ -280,7 +283,8 @@ public partial class MainViewModel : ObservableObject
                             ScannedCountText = count.ToString();
                         });
                     },
-                    onLog: OnScanLog);
+                    onLog: OnScanLog,
+                    searchAllShares: _config.SearchAllShares);
             }, _cts.Token);
 
             await searchTask;
@@ -291,7 +295,7 @@ public partial class MainViewModel : ObservableObject
             OnScanLog(new ScanLogEntry
             {
                 Status = ScanLogEntryStatus.Info,
-                Message = $"Всего: {totalSw.Elapsed.TotalMinutes:F1}мин | Файлов: {finalResults.Length}"
+                Message = string.Format(LanguageManager.GetString("LogTotalSummary"), totalSw.Elapsed.TotalMinutes, finalResults.Length)
             });
 
             App.Current.Dispatcher.Invoke(() =>
@@ -331,6 +335,7 @@ public partial class MainViewModel : ObservableObject
             IsStopEnabled = false;
             _threadTimer.Stop();
             ThreadCountText = "";
+            _password = string.Empty;
         }
     }
 
@@ -344,6 +349,7 @@ public partial class MainViewModel : ObservableObject
         StatusText = LanguageManager.GetString("SearchCancelled");
         _threadTimer.Stop();
         ThreadCountText = "";
+        _password = string.Empty;
     }
 
     public async Task LoadPreviewAsync(SearchResult? selected)
@@ -352,9 +358,12 @@ public partial class MainViewModel : ObservableObject
 
         var ext = Path.GetExtension(selected.FileName).ToLowerInvariant();
         var hasNoExt = string.IsNullOrEmpty(ext);
-        var textExts = new HashSet<string> { ".txt", ".log", ".csv", ".xml", ".json", ".cs", ".py", ".js", ".md", ".cfg", ".ini", ".conf" };
+        var textExts = new HashSet<string> { ".txt", ".log", ".csv", ".xml", ".json", ".cs", ".py", ".js", ".md", ".cfg", ".ini", ".conf", ".docx", ".xlsx" };
 
         PreviewFileName = selected.FileName;
+        PreviewSearchText = (_config.SearchContent && !string.IsNullOrEmpty(_config.ContentSearchText))
+            ? _config.ContentSearchText
+            : string.Empty;
 
         if (!hasNoExt && !textExts.Contains(ext))
         {
@@ -369,14 +378,61 @@ public partial class MainViewModel : ObservableObject
             var content = await Task.Run(() =>
             {
                 var fi = new FileInfo(selected.FullPath);
-                int maxBytes = 50000;
-                using var stream = new FileStream(selected.FullPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
-                using var reader = new StreamReader(stream);
-                var buffer = new char[maxBytes];
-                int read = reader.Read(buffer, 0, buffer.Length);
-                var text = new string(buffer, 0, read);
-                if (fi.Length > maxBytes)
+                int displayLimit = 200000;
+                var searchWords = PreviewSearchText?
+                    .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Where(w => w.Length > 0)
+                    .ToArray();
+                bool hasSearch = searchWords is { Length: > 0 };
+
+                string text;
+                if (ext == ".docx")
+                {
+                    text = DocxReader.ExtractText(selected.FullPath);
+                }
+                else if (ext == ".xlsx")
+                {
+                    text = ExcelReader.ExtractText(selected.FullPath);
+                }
+                else
+                {
+                    using var stream = new FileStream(selected.FullPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                    using var reader = new StreamReader(stream);
+
+                    if (hasSearch)
+                    {
+                        text = reader.ReadToEnd();
+                    }
+                    else
+                    {
+                        var buffer = new char[displayLimit];
+                        int read = reader.Read(buffer, 0, buffer.Length);
+                        text = new string(buffer, 0, read);
+                    }
+                }
+
+                if (hasSearch)
+                {
+                    var pattern = string.Join("|", searchWords!.Select(System.Text.RegularExpressions.Regex.Escape));
+                    var allLines = text.Split('\n');
+                    int totalLines = allLines.Length;
+                    var matchedLines = allLines
+                        .Where(line => System.Text.RegularExpressions.Regex.IsMatch(line, pattern, System.Text.RegularExpressions.RegexOptions.IgnoreCase))
+                        .ToArray();
+
+                    if (matchedLines.Length == 0)
+                    {
+                        return string.Format(LanguageManager.GetString("PreviewNoMatches"), PreviewSearchText);
+                    }
+
+                    text = string.Join("\n", matchedLines);
+                    text += "\n\n" + string.Format(LanguageManager.GetString("PreviewFiltered"), PreviewSearchText, matchedLines.Length, totalLines);
+                }
+                else if (fi.Length > displayLimit)
+                {
                     text += string.Format(LanguageManager.GetString("PreviewTruncated"), fi.Length / 1024);
+                }
+
                 return text;
             });
 
@@ -393,7 +449,7 @@ public partial class MainViewModel : ObservableObject
         var proc = Process.GetCurrentProcess();
         var threads = proc.Threads.Count;
         var memMB = proc.WorkingSet64 / 1024 / 1024;
-        ThreadCountText = $"Потоков: {threads} | Память: {memMB}MB";
+        ThreadCountText = string.Format(LanguageManager.GetString("ThreadInfo"), threads, memMB);
     }
 
     private void OnLanguageChanged()
@@ -435,5 +491,7 @@ public partial class MainViewModel : ObservableObject
             _exclusionService.SaveExclusions(_exclusions);
         }
         catch { }
+
+        _password = string.Empty;
     }
 }

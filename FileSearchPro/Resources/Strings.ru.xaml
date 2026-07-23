@@ -34,6 +34,8 @@
     <s:String x:Key="SettingsTitle">Настройки поиска</s:String>
     <s:String x:Key="Shares">Шары</s:String>
     <s:String x:Key="AllShares">Все</s:String>
+    <s:String x:Key="SearchAllShares">Искать на всех найденных шарах</s:String>
+    <s:String x:Key="SearchAllSharesHint">Автоматически найти и поискать на всех дисковых шарах (C$, D$, Users и др.)</s:String>
     <s:String x:Key="Timeouts">Таймауты (если сеть медленная — увеличьте)</s:String>
     <s:String x:Key="PingTimeoutDesc">Время ожидания ping-ответа от хоста</s:String>
     <s:String x:Key="ShareTimeoutDesc">Время проверки доступности сетевой шары</s:String>
@@ -87,4 +89,21 @@
     <s:String x:Key="MsgErrorPrefix">Ошибка: {0}</s:String>
     <s:String x:Key="SearchError">Ошибка поиска</s:String>
     <s:String x:Key="MsgErrorTitle">Ошибка</s:String>
+    <s:String x:Key="PreviewFiltered">Показаны строки содержащие «{0}» ({1} из {2} строк)</s:String>
+    <s:String x:Key="PreviewNoMatches">Не найдено строк содержащих «{0}»</s:String>
+
+    <!-- Log messages -->
+    <s:String x:Key="LogSettings">Настройки: ping={0}мс, шары={1}мс, файлы={2}мс</s:String>
+    <s:String x:Key="AuthCurrentUser">текущий пользователь</s:String>
+    <s:String x:Key="LogAuth">Авторизация: {0}</s:String>
+    <s:String x:Key="LogNetworkSummary">Сеть: {0:F1}мин | Онлайн: {1} | Оффлайн: {2}</s:String>
+    <s:String x:Key="LogTotalSummary">Всего: {0:F1}мин | Файлов: {1}</s:String>
+    <s:String x:Key="LogScanningFiles">Сканирование файлов на {0}...</s:String>
+    <s:String x:Key="LogAvailableShares">Доступные шары: [{0}], ищем: [{1}]</s:String>
+    <s:String x:Key="LogNoShares">Нет доступных шар для поиска на {0}</s:String>
+    <s:String x:Key="LogFromCache">(из кэша) {0}мс — {1}</s:String>
+    <s:String x:Key="LogPingPort">Ping: {0}мс, порт 445: {1}мс — {2}</s:String>
+    <s:String x:Key="LogPingBlockedPort445">Ping: {0}мс (заблокирован), порт 445: {1}мс — OK</s:String>
+    <s:String x:Key="LogSharesSummary">Ping: {0}мс, порт 445: {1}мс, шары: {2}мс — {3}</s:String>
+    <s:String x:Key="LogPortClosed445">port 445 закрыт</s:String>
 </ResourceDictionary>

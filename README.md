@@ -36,9 +36,9 @@ keywords: поиск файлов в сети, network file search, C# WPF, по
 - **Сканирование сети** — поиск по IP-адресам и диапазонам (192.168.1.1-254)
 - **Скрытые шары** — C$, D$, Users, ADMIN$, IPC$
 - **Поиск по имени файла** — glob-паттерны (*.pdf, report_*.*)
-- **Поиск по содержимому** — несколько слов через запятую, подсветка совпадений
+- **Поиск по содержимому** — несколько слов через запятую, подсветка совпадений, поддержка .docx и .xlsx
 - **Исключения** — папки, файлы, расширения (настраивается)
-- **Предпросмотр** — текстовых файлов с подсветкой найденных слов
+- **Предпросмотр** — текстовых файлов, .docx и .xlsx с подсветкой найденных слов
 - **Журнал сканирования** — реал-тайм лог каждого хоста (IP, статус, шары)
 - **Экспорт журнала** — копирование в буфер обмена + сохранение в .log файл
 - **Настройки** — модальное окно с таймаутами, шарами, фильтрами
@@ -120,6 +120,8 @@ FileSearchPro/
     ├── Services/
     │   ├── NetworkScanner.cs — Сканирование сети
     │   ├── FileSearchService.cs — Поиск файлов
+    │   ├── DocxReader.cs — Чтение .docx файлов
+    │   ├── ExcelReader.cs — Чтение .xlsx файлов
     │   ├── ExclusionService.cs — Исключения
     │   ├── AuthService.cs — Авторизация
     │   ├── SettingsService.cs — Настройки
@@ -140,4 +142,4 @@ FileSearchPro/
 
 ---
 
-**Tags:** `network file search` `C# WPF application` `search files by IP` `Windows network scanner` `find files in network` `hidden shares search` `C$ D$ access` `file content search` `grep network` `search text in files` `scan journal` `localization`
+**Tags:** `network file search` `C# WPF application` `search files by IP` `Windows network scanner` `find files in network` `hidden shares search` `C$ D$ access` `file content search` `grep network` `search text in files` `scan journal` `localization` `docx search` `xlsx search` `Office document search`
